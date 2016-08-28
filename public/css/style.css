@@ -1,0 +1,196 @@
+.sidebar{
+  z-index: 150;
+}
+
+#video-container{
+	width: 419px;
+	height: 238px;
+
+	border-style: solid;
+	border-width: 3px;
+	border-color: #404040;
+	background-color: black;
+
+	margin-bottom: 5px;
+}
+
+.full-height{
+	height: 100%;
+}
+
+#chat .panel-body{
+	height: 70%;
+	overflow-y: scroll;
+}
+
+/* Moshpit */
+#moshpit{
+	position: absolute;
+	width:95%;
+	height:300px;
+}
+#moshpit .tooltip > .tooltip-inner{
+  background-color: #424242;
+}
+#moshpit .tooltip > .tooltip-arrow{
+  border-top-color: #424242;
+}
+
+/* audience members */
+.audience-member{
+	position: absolute;
+  width: 98px; /* width of head */
+}
+.audience-head{
+	position:  absolute;
+}
+
+.audience-body{
+	position: absolute;
+    top: 64px;
+    left: 23px;
+}
+
+/* My Queue */
+#my-queue .panel-body{
+	padding: 0;
+	height: 340px;
+  overflow-y: scroll;
+}
+#my-queue-list{
+	padding-left: 0px;
+}
+#my-queue-list li{
+	list-style: none;
+	height: 45px;
+	width: 100%;
+	padding-top: 10px;
+	padding-left: 5px;
+
+	border-width: 0px 0px 2px 0px;
+    border-color: #999999;
+    border-style: solid;
+}
+
+/* Video Player */
+.video-js.vjs-default-skin .vjs-big-play-button, 
+.vjs-icon-pause, .video-js .vjs-play-control,
+.vjs-poster,
+.vjs-fullscreen-control
+{
+  display: none !important; 
+}
+.vjs-progress-control{
+  pointer-events: none;
+}
+
+
+
+/* Headbob CSS3 animation */
+.headbob-animation{
+  animation: headbobAnimationFrames ease-in-out 1.7s;
+  animation-iteration-count: infinite;
+  transform-origin: 50% 100%;
+  -webkit-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-transform-origin: 50% 100%;
+  -moz-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -moz-animation-iteration-count: infinite;
+  -moz-transform-origin: 50% 100%;
+  -o-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -o-animation-iteration-count: infinite;
+  -o-transform-origin: 50% 100%;
+  -ms-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -ms-animation-iteration-count: infinite;
+  -ms-transform-origin: 50% 100%;
+}
+
+@keyframes headbobAnimationFrames{
+  0% {
+    transform:  rotate(0deg) ;
+  }
+  25% {
+    transform:  rotate(15deg) ;
+  }
+  50% {
+    transform:  rotate(0deg) ;
+  }
+  75% {
+    transform:  rotate(-15deg) ;
+  }
+  100% {
+    transform:  rotate(0deg) ;
+  }
+}
+
+@-moz-keyframes headbobAnimationFrames{
+  0% {
+    -moz-transform:  rotate(0deg) ;
+  }
+  25% {
+    -moz-transform:  rotate(15deg) ;
+  }
+  50% {
+    -moz-transform:  rotate(0deg) ;
+  }
+  75% {
+    -moz-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -moz-transform:  rotate(0deg) ;
+  }
+}
+
+@-webkit-keyframes headbobAnimationFrames {
+  0% {
+    -webkit-transform:  rotate(0deg) ;
+  }
+  25% {
+    -webkit-transform:  rotate(15deg) ;
+  }
+  50% {
+    -webkit-transform:  rotate(0deg) ;
+  }
+  75% {
+    -webkit-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -webkit-transform:  rotate(0deg) ;
+  }
+}
+
+@-o-keyframes headbobAnimationFrames {
+  0% {
+    -o-transform:  rotate(0deg) ;
+  }
+  25% {
+    -o-transform:  rotate(15deg) ;
+  }
+  50% {
+    -o-transform:  rotate(0deg) ;
+  }
+  75% {
+    -o-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -o-transform:  rotate(0deg) ;
+  }
+}
+
+@-ms-keyframes headbobAnimationFrames {
+  0% {
+    -ms-transform:  rotate(0deg) ;
+  }
+  25% {
+    -ms-transform:  rotate(15deg) ;
+  }
+  50% {
+    -ms-transform:  rotate(0deg) ;
+  }
+  75% {
+    -ms-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -ms-transform:  rotate(0deg) ;
+  }
+}

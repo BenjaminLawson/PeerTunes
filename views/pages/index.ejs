@@ -1,0 +1,101 @@
+<% include ../partials/header %>
+
+				<div class="row">
+					<div class="col-md-3 sidebar">
+						<div class="row">
+							<div class="col-md-12">
+								<div id="my-queue" class="panel panel-default">
+									<div class="panel-heading">
+										<h3 class="panel-title">My Queue</h3>
+									</div>
+									<div class="panel-body">
+										<ul id="my-queue-list" class="sortable">
+										</ul>
+									</div>
+									<div class="panel-footer">
+										<div class="input-group">
+											<input type="text" id="song-submit-text" class="form-control" placeholder="YouTube Video ID">
+											<span class="input-group-btn">
+												<button id="song-submit-button" class="btn btn-default" type="button">Submit</button>
+											</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-md-12">
+								
+								<button type="button" id="btn-join-queue" class="btn btn-primary btn-large btn-block">Join DJ Lineup</button>
+							</div>
+						</div>
+						
+					</div>
+					<div class="col-md-6">
+						<div class="row">
+							<div class="col-md-12">
+								<div id="video-container" class="center-block">
+									<div id="video-frame" style="display: none;">
+										<video
+											id="vid1"
+											class="video-js vjs-default-skin"
+											controls
+											width="413" height="231"
+											data-setup='{ "techOrder": ["youtube"], "sources": [], "youtube": { "iv_load_policy": 3, "disablekb": 1, "modestbranding": 1, "autoplay": 1 }}'
+											>
+										</video>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-md-2"></div>
+							<div class="col-md-8">
+								<div class="btn-group btn-group-justified" role="group" aria-label="...">
+									<div class="btn-group" role="group">
+										<button type="button" id="like-button" class="btn btn-success btn-lg"><span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span></button>
+									</div>
+									<div class="btn-group" role="group">
+										<button type="button" id="dislike-button" class="btn btn-danger btn-lg"><span class="glyphicon glyphicon-thumbs-down" aria-hidden="true"></span></button>
+									</div>
+								</div>
+							</div>
+							<div class="col-md-2"></div>
+						</div>
+						<div class="row">
+							<div class="col-md-12">
+								<div id="moshpit" class="center-block"></div>
+							</div>
+						</div>
+						
+					</div>
+					<div class="col-md-3 sidebar">
+						<div id="chat" class="panel panel-default">
+							<div class="panel-heading">
+								<h3 class="panel-title">Chat</h3>
+							</div>
+							<div class="panel-body">
+								<div class="message">
+									<div class="message-user"><h6 class="text-primary">Welcome!</h6></div>
+									<div class="message-text">Click "Rooms" to join a room.</div>
+								</div>
+							</div>
+							<div class="panel-footer">
+								<div class="input-group">
+									<input type="text" id="chat-text" class="form-control" placeholder="Enter message here...">
+									<span class="input-group-btn">
+										<button id="chat-enter" class="btn btn-default" type="button">Enter</button>
+									</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				
+			</div>
+			
+			<% include ../partials/roomsModal %>
+			<% include ../partials/createRoomModal %>
+
+<% include ../partials/footer %>
