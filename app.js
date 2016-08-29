@@ -6,6 +6,12 @@
 -host controls & relays room data
 --> this way only host has control of queue, and can kick/ban users (by ip)
 
+Future features:
+-seed & play mp3 file (not permanent in queue?)
+-drawing (maybe dj whiteboard, or draw and then drawing appears above head)
+-store playlist in localstorage
+-let user pause, but keep timer so on play it jumps to current time
+
 //TODO: central message type/string object
 //TODO: change everything to ids, since user doesn't have peer object for themself
 //TODO: scuttlebutt: https://github.com/dominictarr/scuttlebutt#scuttlebuttevents
@@ -15,6 +21,33 @@ var hat = require('hat')
 var Peer = require('simple-peer')
 var Tracker = require('bittorrent-tracker/client')
 
+var YT = {
+    config: {
+        apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY' //YouTube data api key
+    },
+    getVideoMeta: function(id, callback){
+        var meta = {
+            id: id,
+            title: '',
+            description: '',
+            duration: 0 //milliseconds
+        };
+        var apiQuery = "https://www.googleapis.com/youtube/v3/videos?id="+id+"&key="+YT.config.apiKey+"&part=snippet,contentDetails";
+        var firstResult, ISODuration;
+
+        console.log("YT API query: ", apiQuery);
+        $.getJSON(apiQuery, function(result){
+            console.log("YT API Result: ", result);
+            firstResult = result.items[0];
+            meta.title = firstResult.snippet.title;
+            meta.description = firstResult.snippet.description;
+            //YouTube gives duration in ISO format, need to convert to milliseconds
+            ISODuration = firstResult.contentDetails.duration;
+            meta.duration = moment.duration(ISODuration).asMilliseconds();
+            callback(meta);
+        });
+    }
+}
 
 var PT = {
     config: {
@@ -84,13 +117,13 @@ var PT = {
     initTrackerListeners: function(){
         console.log("Initializing tracker event listeners")
         PT.tracker.on('peer', function (peer) {
-            console.log('Tracker sent new peer: ' + peer.id)
-
             //don't add duplicate peers
+            //won't work with multiple trackers
             if (PT.peers.map( function (p) { return p.id }).indexOf(peer.id) > -1) return
 
-            PT.peers.push(peer)
+            console.log('Tracker sent new peer: ' + peer.id)
 
+            PT.peers.push(peer)
 
             if (peer.connected) onConnect()
             else peer.once('connect', onConnect)
@@ -115,18 +148,28 @@ var PT = {
                     peer.removeListener('error', onClose)
                     peer.removeListener('end', onClose)
 
+                    //no check since peer must be in array
                     PT.peers.splice(PT.peers.indexOf(peer), 1)
-                    if (PT.isHost) {
-                        var index = PT.host.djQueue.indexOf(peer)
-                        if (PT.host.djQueue.indexOf(peer) > -1) PT.host.djQueue.splice(index,1)
+                    PT.removeRoom(peer)
 
-                        index = PT.host.guests.indexOf(peer)
-                        if (index > -1) PT.host.guests.splice(index,1)
+                    if (PT.isHost) {
+                        //remove peer if it is in array
+                        var removedGuest = false
+                        PT.host.guests = PT.host.guests.filter(function (el) { 
+                            if (el !== peer ) {
+                                return true
+                            }
+                            PT.removeAvatar(el.username)
+                            removedGuest = true
+                            return false
+                        })
+                        //only check djQueue if removed peer was a guest
+                        if (removedGuest) PT.host.djQueue = PT.host.djQueue.filter(function (el) { return el !== peer })
                     }
 
                     console.log('Number of peers: ' + PT.peers.length)
                 }
-                //TODO: move message handler
+
                 function onMessage (data) {
                     console.log('Received message: ' + data)
                     try {
@@ -149,6 +192,7 @@ var PT = {
                             case 'host-end':
                                 console.log('Host closed room: ' + peer.username)
                                 PT.removeRoom(peer)
+                                //TODO: end song, clear chat
                                 break
                             case 'join-room':
                                 if (PT.isHost) {
@@ -156,17 +200,17 @@ var PT = {
 
                                     //user should have sent username first
                                     PT.addAvatar(peer.username);
-                                    PT.broadcastToRoom({type: 'new-user', value: peer.username})
+                                    PT.broadcastToRoom({msg: 'new-user', value: peer.username})
 
                                     //send old users
                                     for(var i=PT.host.guests.length-1; i>=0; i--){
                                         //TODO: send current head bobbing states, maybe assign state to guest peers
                                         //send new client all users except themself
-                                        if(PT.host.guests[i] != peer) peer.send(JSON.stringify({type: "new-user", value: PT.host.guests[i].username}))
+                                        if(PT.host.guests[i] != peer) peer.send(JSON.stringify({msg: "new-user", value: PT.host.guests[i].username}))
                                     }
 
                                     //send host (self), since host isn't in guests array
-                                    peer.send(JSON.stringify({type: "new-user", value: PT.username}));
+                                    peer.send(JSON.stringify({msg: "new-user", value: PT.username}));
                                     
                                     //send current song info
                                     if(PT.song.meta.id !== undefined){
@@ -175,19 +219,24 @@ var PT = {
                                     }
                                 }
                                 break
+                            case 'new-user':
+                                //verify that message actually came from room host
+                                if (peer === PT.hostPeer) PT.addAvatar(data.value)
+                                break
                             case 'rate': //note: object format different if sent from guest->host vs. host->guests (additional value.rating property)
                                 console.log("Received rating update: ", data.value);
 
+                                //TODO fix this
                                 if (PT.isHost) { //update rating & relay to other guests
                                     PT.rating = (data.value == 1) ? PT.rating+1 : PT.rating-1;
                                     console.log("Updated Rating: " + PT.rating);
                                     PT.broadcast({type: "rate", value: {rating: PT.rating, id: peer.username, action: data.value}}, peer)
 
                                     if(data.value == 1){ //like
-                                        $('#user-' + data.value.id + " .audience-head").addClass('headbob-animation');
+                                        $('#user-' + peer.username + " .audience-head").addClass('headbob-animation');
                                     }
                                     else if(data.value == -1){ //dislike
-                                        $('#user-' + data.value.id + " .audience-head").removeClass('headbob-animation');
+                                        $('#user-' + peer.username + " .audience-head").removeClass('headbob-animation');
                                     }
                                 }
                                 else {
@@ -198,6 +247,9 @@ var PT = {
                                         $('#user-' + data.value.id + " .audience-head").removeClass('headbob-animation');
                                     }
                                 }
+                                break
+                            case 'leave-queue':
+                                if (PT.isHost) PT.removeDJFromQueue(peer)
                                 break
                             default:
                                 console.log('unknown message: ' + data.msg)
@@ -210,18 +262,15 @@ var PT = {
                                 case 'join-queue':
                                     var isAlreadyInQueue = false;
                                     for(var i=PT.host.djQueue.length-1; i>=0; i--){
-                                        if(PT.host.djQueue[i]==peer.id){
+                                        if(PT.host.djQueue[i]==peer){
                                            isAlreadyInQueue = true;
-                                           break;
+                                           break //breaks from for loop only
                                         }
                                     }
                                     if(!isAlreadyInQueue){
-                                        PT.addDJToQueue(conn.peer)
+                                        PT.addDJToQueue(peer)
                                     }
-                                    break;
-                                case 'leave-queue':
-                                    PT.removeDJFromQueue(conn.peer);
-                                    break;
+                                    break
                                 case 'chat':
                                     data.msg = PT.chat.filter(data.msg);
 
@@ -279,9 +328,6 @@ var PT = {
                                     PT.chat.appendMsg(data.value.id, data.value.msg);
                                     if(wasAtBottom) PT.chat.scrollToBottom();
                                     break;
-                                case 'new-user':
-                                    PT.addAvatar(data.value);
-                                    break;
                                 case 'leave':
                                     PT.removeAvatar(data.value);
                                     break;
@@ -324,8 +370,12 @@ var PT = {
         })
     },
     initKeyHandlers: function(){
+        var key = {
+            ENTER: 13
+        }
+
         $('#chat-text').keydown(function (e){
-            if(e.keyCode == 13){ //Enter
+            if(e.keyCode == key.ENTER){
                 PT.chat.submitMessage();
             }
         })
@@ -345,22 +395,14 @@ var PT = {
             $(".audience-member").tooltip('destroy');
             $('#moshpit').html('');
             PT.chat.clear();
-            if(PT.hostPeer != null){
-                PT.hostPeer.send(JSON.stringify({type: 'leave'}));
-            }
-            if(PT.isHost){
-                PT.stopHosting();
+
+            if(PT.isHost){ //button = Destroy Room
                 $(this).text('Create Room');
+                PT.stopHosting();
             }
-            else{
-                PT.broadcast({username: PT.username})
-                PT.addAvatar(PT.username);
-                PT.chat.appendMsg("Notice", "Room Created");
+            else{ //button = Create Room
                 $(this).text('Destroy Room');
-                PT.broadcast({msg: 'new-room', value: PT.username})
-                PT.rooms.push(PT.dummySelfPeer)
-                PT.isHost = true
-                //TODO: add own room
+                PT.startHosting(PT.username + '\'s room')
             }
         });
         //join DJ queue
@@ -434,12 +476,24 @@ var PT = {
             PT.chat.submitMessage();
         })
     },
+    startHosting: function (title) {
+        if(PT.hostPeer != null){
+            PT.hostPeer.send(JSON.stringify({type: 'leave'}));
+        }
+        PT.broadcast({username: PT.username})
+        PT.addAvatar(PT.username);
+        PT.chat.appendMsg("Notice", "Room Created");
+        PT.broadcast({msg: 'new-room', value: title})
+        PT.addRoom(PT.dummySelfPeer, title) //TODO: actual room title
+        PT.isHost = true
+    },
     stopHosting: function(){
         //broadcast to swarm so list is updated
         PT.broadcast({msg:'host-end'})
         PT.host.djQueue.length = 0;
         PT.vote = 0;
         PT.isHost = false
+        PT.removeRoom(PT.dummySelfPeer)
     },
     //TODO: use this everywhere
     sendTo: function (data, peer) {
@@ -462,31 +516,29 @@ var PT = {
             if (peer.connected && peer !== exception) peer.send(data)
         })
     },
-    //TODO: change to room{add(),remove()}
+    //TODO: change to rooms{all[], add(),remove(),}
     addRoom: function (peer, title) {
+        console.log('Adding room: ' + title)
         PT.rooms.push({peer: peer, title: title})
-        //PT.refreshRoomListing()
     },
     removeRoom: function(peer) {
+        console.log('Removing ' + peer.username + '\'s room')
         var index = PT.rooms.map(function(r){ return r.peer}).indexOf(peer)
-        if (index > -1) {
-            PT.rooms.splice(index, 1)
-        }
-        //PT.refreshRoomListing()
+        if (index > -1) PT.rooms.splice(index, 1)
     },
     refreshRoomListing: function(){
         console.log('refreshing room listing')
         $('#roomModal .modal-body').html('')
 
         $.each(PT.rooms, function(i, room){
-            var id = room.title
+            var id = room.peer.username
             $('#roomModal .modal-body').append('\
                 <button id="join-room-'+id+'" type="button" class="btn btn-link">'
-                + id
+                + room.title
                 + '</button><br>\
             ')
             $('#join-room-'+id).click(function(){
-                //TODO: join room logic
+                //TODO: close modal
                 console.log('Joining room: ' + id)
                 PT.connectToHost(room.peer)
             })
@@ -665,9 +717,10 @@ var PT = {
     removeDJFromQueue: function(peer){
         var index = PT.host.djQueue.indexOf(peer)
         if (index > -1) {
-            PT.host.djQueue.splice(i,1);
+            PT.host.djQueue.splice(index,1);
             if(index == 0){ //currently playing dj
                 clearTimeout(PT.song.timeout);
+                //check if the dj that left was the only dj
                 if(PT.host.djQueue.length == 0){
                     PT.song.end();
                     PT.broadcastToRoom(JSON.stringify({type: 'end-song'}));
@@ -691,4 +744,5 @@ var PT = {
     }
 }
 
-$( document ).ready(PT.init);
+
+$( document ).ready(PT.init)
