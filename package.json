@@ -1,10 +1,16 @@
 {
-  "name": "PeerTunes-Server",
+  "name": "PeerTunes",
   "version": "0.0.1",
-  "description": "Server for PeerTunes",
+  "description": "PeerTunes",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "browserify app.js -d -o public/js/app.js"
+  },
   "dependencies": {
+    "bittorrent-tracker": "^8.0.11",
     "ejs": "^2.4.2",
     "express": "^4.13.4",
-    "socket.io": "^1.4.6"
+    "hat": "0.0.3",
+    "simple-peer": "^6.0.7"
   }
 }
