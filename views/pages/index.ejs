@@ -41,9 +41,18 @@
 											class="video-js vjs-default-skin"
 											controls
 											width="413" height="231"
-											data-setup='{ "techOrder": ["youtube"], "sources": [], "youtube": { "iv_load_policy": 3, "disablekb": 1, "modestbranding": 1, "autoplay": 1 }}'
+											data-setup='{ "techOrder": ["html5","youtube"], "sources": [], "youtube": { "iv_load_policy": 3, "disablekb": 1, "modestbranding": 1, "autoplay": 1 }}'
 											>
 										</video>
+										<audio 
+										    id="vid2" 
+										    class="video-js vjs-default-skin" 
+										    poster="http://i.imgur.com/jAwu0Xk.png"
+										    controls
+										    preload="auto"
+										    width="413" height="231"
+										    data-setup="{ }">
+									    </audio>
 									</div>
 								</div>
 							</div>
@@ -94,8 +103,34 @@
 				
 				
 			</div>
+
 			
 			<% include ../partials/roomsModal %>
 			<% include ../partials/createRoomModal %>
+
+			<script id="queueItemTmpl" type="x-tmpl-mustache">
+				<li data-source="{{ source }}" data-id="{{ id }}">
+					<h5>{{ title }}</h5>
+					<span>{{ source }}</span>
+				</li>
+			</script>
+			<script id="chatMessageTmpl" type="x-tmpl-mustache">
+				
+			</script>
+			<script id="roomRowTmpl" type="x-tmpl-mustache">
+				<li class="cursor-pointer">
+					<div class="row">
+						<div class="col-md-10">
+							<span>{{ title }}</span>
+							<span>Hosted by {{ id }}</span>
+						</div>
+						<div class="col-md-2">
+							<button id="join-room-{{ id }}" type="button" class="btn btn-default btn-join-room">Join Room</button>
+						</div>
+					</div>
+					
+            	</li>
+
+			</script>
 
 <% include ../partials/footer %>

@@ -14,6 +14,11 @@
 	margin-bottom: 5px;
 }
 
+#vid2 {
+    position: absolute;
+    top: 3px;
+}
+
 .full-height{
 	height: 100%;
 }
@@ -22,6 +27,11 @@
 	height: 70%;
 	overflow-y: scroll;
 }
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
 
 /* Moshpit */
 #moshpit{
@@ -62,7 +72,7 @@
 }
 #my-queue-list li{
 	list-style: none;
-	height: 45px;
+	height: 62px;
 	width: 100%;
 	padding-top: 10px;
 	padding-left: 5px;
@@ -192,5 +202,85 @@
   }
   100% {
     -ms-transform:  rotate(0deg) ;
+  }
+}
+
+
+/* Headnod CSS3 animation */
+.head-nod{
+  animation: nod-frames linear 0.4s;
+  animation-iteration-count: infinite;
+  transform-origin: 50% 50%;
+  -webkit-animation: nod-frames linear 0.4s;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-transform-origin: 50% 50%;
+  -moz-animation: nod-frames linear 0.4s;
+  -moz-animation-iteration-count: infinite;
+  -moz-transform-origin: 50% 50%;
+  -o-animation: nod-frames linear 0.4s;
+  -o-animation-iteration-count: infinite;
+  -o-transform-origin: 50% 50%;
+  -ms-animation: nod-frames linear 0.4s;
+  -ms-animation-iteration-count: infinite;
+  -ms-transform-origin: 50% 50%;
+}
+
+@keyframes nod-frames{
+  0% {
+    transform:  translate(0px,0px)  ;
+  }
+  50% {
+    transform:  translate(0px,10px)  ;
+  }
+  100% {
+    transform:  translate(0px,0px)  ;
+  }
+}
+
+@-moz-keyframes nod-frames{
+  0% {
+    -moz-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -moz-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -moz-transform:  translate(0px,0px)  ;
+  }
+}
+
+@-webkit-keyframes nod-frames {
+  0% {
+    -webkit-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -webkit-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -webkit-transform:  translate(0px,0px)  ;
+  }
+}
+
+@-o-keyframes nod-frames {
+  0% {
+    -o-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -o-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -o-transform:  translate(0px,0px)  ;
+  }
+}
+
+@-ms-keyframes nod-frames {
+  0% {
+    -ms-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -ms-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -ms-transform:  translate(0px,0px)  ;
   }
 }

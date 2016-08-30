@@ -12,15 +12,32 @@ Future features:
 -store playlist in localstorage
 -let user pause, but keep timer so on play it jumps to current time
 
-//TODO: central message type/string object
-//TODO: change everything to ids, since user doesn't have peer object for themself
-//TODO: scuttlebutt: https://github.com/dominictarr/scuttlebutt#scuttlebuttevents
+TODO: hosts broadcast room population every 5 minutes
+TODO: use Dragula for queue drag/drop
+TODO: central message type/string object
+TODO: change everything to ids, since user doesn't have peer object for themself
+TODO: scuttlebutt: https://github.com/dominictarr/scuttlebutt#scuttlebuttevents
+TODO: "server" version, bittorrent-tracker works on node.js (just remove player code)
+--> put player code in module, don't use on server
+--> don't make avatar for server
+TODO: templating
+TODO: HTML5 indexeddb to seed songs from
+https://github.com/localForage/localForage
+http://dexie.org/
+//TODO: uplaod images to imgur
+//TODO: add currently playing song to playlist
+--- if mp3, download torrent and add to localstorage
 */
 
 var hat = require('hat')
 var Peer = require('simple-peer')
 var Tracker = require('bittorrent-tracker/client')
+var Mustache = require('mustache')
+var WebTorrent = require('webtorrent')
+var localforage = require('localforage')
+var dragDrop = require('drag-drop')
 
+//YouTube
 var YT = {
     config: {
         apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY' //YouTube data api key
@@ -45,13 +62,18 @@ var YT = {
             ISODuration = firstResult.contentDetails.duration;
             meta.duration = moment.duration(ISODuration).asMilliseconds();
             callback(meta);
-        });
+        })
     }
+}
+
+//Soundcloud
+var SC = {
+
 }
 
 var PT = {
     config: {
-        maxRoomSize: 50, //arbitrary
+        maxRoomSize: 50, //arbitrary until further testing
         maxChatLength: 300,
         trackerURL: 'wss://tracker.webtorrent.io'
     },
@@ -60,7 +82,7 @@ var PT = {
     peers: [], //peers in swarm
     peerId: new Buffer(hat(160), 'hex'), //peer ID of this peer: new Buffer(hat(160), 'hex')
     dummySelfPeer: null,
-    username: hat(80),
+    username: hat(56),
     hostPeer: null, //per object of room host
     rooms: [], //{peer, title}
     vote: 0, //vote for current video
@@ -70,6 +92,7 @@ var PT = {
     player: null, //videojs player object
     host:{
         //TODO: make object literal instead of array?
+        meta: {title: ''},
         guests: [], //client connections
         djQueue: [] //array of DJ's in queue
     },
@@ -77,7 +100,7 @@ var PT = {
     init: function(){
         console.log('Initializing')
         //PT.username = prompt('Please enter your username (no spaces):')
-        console.log('Your username: ' + PT.username)
+        console.log('Your username: ', PT.username)
         PT.dummySelfPeer = {username: PT.username, id: PT.peerId}
         //assign common jQuery selectors
         PT.chat.chatBody = $('#chat .panel-body')
@@ -102,6 +125,9 @@ var PT = {
         PT.initKeyHandlers()
 
         PT.player = videojs('vid1')
+
+        var audioPlayer = videojs('vid2')
+
         //video player listeners
         PT.player.ready(function() {
                 //automatically hide/show player when song is playing
@@ -112,6 +138,35 @@ var PT = {
                     $('#video-frame').show()
                 })
         })
+
+
+        dragDrop('#my-queue', function (files) {
+            //console.log('Here are the dropped files', files)
+            var file = files[0]
+            var key = file.name
+            //var fileURL = window.URL.createObjectURL(file)
+            //console.log('url before: ', fileURL)
+            var blob = new Blob([file])
+            //TODO: get title of mp3?
+            //store files in localstorage so they can be seeded in future
+            PT.addSongToQueue({title: key, source: 'MP3', id: key})
+            localforage.setItem(key, blob).then(function () {
+              return localforage.getItem(key);
+            }).then(function (value) {
+                // we got our value
+                //TODO: use piping/appendTo
+                var backToFile = new File([value], key, {type: 'audio/mp3', lastModified: Date.now()})
+                var url = window.URL.createObjectURL(backToFile)
+                console.log('file: ', backToFile)
+                console.log('file url: ', url)
+                audioPlayer.src({ type: 'audio/mp3', src: url })
+            }).catch(function (err) {
+              // we got an error
+              console.log('Error retreiving file:', err)
+            })
+        })
+
+
 
     },
     initTrackerListeners: function(){
@@ -138,7 +193,10 @@ var PT = {
                 peer.on('end', onClose)
 
 
-                if (PT.isHost) peer.send(JSON.stringify({msg: 'new-room', value: PT.username}))
+                if (PT.isHost) {
+                    peer.send(JSON.stringify({username: PT.username}))
+                    peer.send(JSON.stringify({msg: 'new-room', value: PT.host.meta.title}))
+                }
 
                 function onClose () {
                     console.log("Peer disconnected: " + peer.id)
@@ -186,6 +244,7 @@ var PT = {
                     if (data.msg) {
                         switch (data.msg) {
                             case 'new-room':
+                                //TODO: send username with new-room
                                 console.log('Adding room ' + data.value)
                                 PT.addRoom(peer, data.value)
                                 break
@@ -251,6 +310,10 @@ var PT = {
                             case 'leave-queue':
                                 if (PT.isHost) PT.removeDJFromQueue(peer)
                                 break
+                            case 'end-song':
+                                //end song prematurely (eg. the host leaves dj queue while their song is playing)
+                                PT.song.end();
+                                break
                             default:
                                 console.log('unknown message: ' + data.msg)
                         }
@@ -277,7 +340,7 @@ var PT = {
                                     PT.broadcastToRoom({type: "chat", value: {id: peer.username, msg: data.msg}}, peer);
                                     var wasAtBottom = PT.chat.isScrolledToBottom();
                                     PT.chat.appendMsg(peer.username, data.msg);
-                                    if(wasAtBottom) PT.chat.scrollToBottom();
+                                    if (wasAtBottom) PT.chat.scrollToBottom();
                                     break;
                                 case 'song':
                                     //verify dj is at front of queue
@@ -337,10 +400,6 @@ var PT = {
                                     var queueFront = PT.frontOfSongQueue();
                                     PT.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}));
                                     break;
-                                case 'end-song':
-                                    //end song prematurely (eg. the host leaves dj queue while their song is playing)
-                                    PT.song.end();
-                                    break;
                                 default:
                                     console.log('received unknown data type: ', data.type);
 
@@ -384,33 +443,42 @@ var PT = {
         console.log('initializing click handlers')
         //queue
         $('#song-submit-button').click(function(e) {
-            $('#my-queue-list').append('<li>'+$('#song-submit-text').val()+'</li>');
-            $('#song-submit-text').val('');
-            $('.sortable').sortable();
+            PT.addSongToQueue({title: $('#song-submit-text').val(), source: 'YOUTUBE', id: $('#song-submit-text').val()})
+            $('#song-submit-text').val('')
 
         });
         //create room
-        $('#create-room').click(function(e) {
-            console.log('create/destroy room clicked');
-            $(".audience-member").tooltip('destroy');
-            $('#moshpit').html('');
-            PT.chat.clear();
+        $('#btn-create-room').click(function(e) {
+            console.log('create/destroy room clicked')
 
-            if(PT.isHost){ //button = Destroy Room
-                $(this).text('Create Room');
-                PT.stopHosting();
+            $(".audience-member").tooltip('destroy')
+            $('#moshpit').html('')
+            PT.chat.clear()
+
+            if (PT.isHost) { //button = Destroy Room
+                $(this).text('Create Room')
+                PT.stopHosting()
             }
-            else{ //button = Create Room
-                $(this).text('Destroy Room');
-                PT.startHosting(PT.username + '\'s room')
+            else {
+                $('#createRoomModal').modal('toggle')
             }
-        });
+        })
+
+        //modal create room
+        $('#modal-btn-create-room').click(function(e) {
+
+            $('#btn-create-room').text('Destroy Room')
+            PT.startHosting($('#roomNameInput').val())
+            $('#roomNameInput').val('')
+
+        })
+
         //join DJ queue
         $('#btn-join-queue').click(function(e) {
             if(!PT.inQueue){
                 PT.inQueue = true;
                 if(PT.isHost){
-                    PT.addDJToQueue(PT.peerId);
+                    PT.addDJToQueue(PT.dummySelfPeer);
                 }
                 else{
                     PT.hostPeer.send(JSON.stringify({type: "join-queue"}));
@@ -421,16 +489,17 @@ var PT = {
                 PT.inQueue = false;
                 $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue');
                 if(PT.isHost){
-                    PT.removeDJFromQueue(PT.peerId);
+                    PT.removeDJFromQueue(PT.dummySelfPeer);
                 }
                 else{
-                    PT.hostPeer.send(JSON.stringify({type: "leave-queue"}));
+                    PT.hostPeer.send(JSON.stringify({msg: 'leave-queue'}));
                 }
             }
         });
 
         //rating buttons
-        //TODO: host keeps track of votes changing (eg. changing vote from -1 to +1 should add 2, but the client can't be trusted for this)
+        //TODO: keep button active after click
+        //TODO: host keeps track of votes changing (eg. changing vote from -1 to +1 should add 2, but the guest can't be trusted for this)
         $('#like-button').click(function(e) {
             console.log('Rate +1')
             if(PT.vote == 0 || PT.vote == -1){
@@ -438,7 +507,7 @@ var PT = {
                 if(PT.isHost){
                     PT.rating++;
                     console.log("Rating: " + PT.rating);
-                    PT.broadcast({msg: "rate", value: {rating: PT.rating, id: PT.username, action: 1}}, null);
+                    PT.broadcast({msg: "rate", value: {rating: PT.rating, action: 1}}, null);
                 }
                 else{
                     PT.hostPeer.send(JSON.stringify({msg: "rate", value: 1}));
@@ -453,7 +522,7 @@ var PT = {
                 if(PT.isHost){
                     PT.rating--;
                     console.log("Rating: " + PT.rating);
-                    PT.broadcast({msg: "rate", value: {rating: PT.rating, id: PT.username, action: -1}}, null);
+                    PT.broadcast({msg: "rate", value: {rating: PT.rating, action: -1}}, null);
                 }
                 else{
                     PT.hostPeer.send(JSON.stringify({msg: "rate", value: -1}));
@@ -462,30 +531,35 @@ var PT = {
             }
         })
         //room modal
-        $('a[data-target="#roomModal"]').click(function(event) {
-            PT.refreshRoomListing();
+        $('button[data-target="#roomModal"]').click(function(event) {
+            console.log('clicked rooms button')
+            PT.refreshRoomListing()
         })
 
 
         $('#room-refresh').click(function(event) {
-            PT.refreshRoomListing();
+            PT.refreshRoomListing()
         })
         //chat
         //TODO max length
         $('#chat-enter').click(function(event) {
-            PT.chat.submitMessage();
+            PT.chat.submitMessage()
         })
     },
     startHosting: function (title) {
         if(PT.hostPeer != null){
-            PT.hostPeer.send(JSON.stringify({type: 'leave'}));
+            PT.hostPeer.send(JSON.stringify({type: 'leave'}))
         }
+        
+        PT.addAvatar(PT.username)
+        PT.chat.appendMsg("Notice", "Room Created")
+
         PT.broadcast({username: PT.username})
-        PT.addAvatar(PT.username);
-        PT.chat.appendMsg("Notice", "Room Created");
         PT.broadcast({msg: 'new-room', value: title})
-        PT.addRoom(PT.dummySelfPeer, title) //TODO: actual room title
+
+        PT.addRoom(PT.dummySelfPeer, title)
         PT.isHost = true
+        PT.host.meta.title = title
     },
     stopHosting: function(){
         //broadcast to swarm so list is updated
@@ -528,21 +602,33 @@ var PT = {
     },
     refreshRoomListing: function(){
         console.log('refreshing room listing')
-        $('#roomModal .modal-body').html('')
+        //$('#roomModal .modal-body').html('')
+        //TODO: make element of all rooms at once, then append
+        var template = $('#roomRowTmpl').html()
+        Mustache.parse(template)
 
+        var $ul = $( '<ul>' ).addClass('list-unstyled')
         $.each(PT.rooms, function(i, room){
             var id = room.peer.username
-            $('#roomModal .modal-body').append('\
-                <button id="join-room-'+id+'" type="button" class="btn btn-link">'
-                + room.title
-                + '</button><br>\
-            ')
-            $('#join-room-'+id).click(function(){
-                //TODO: close modal
+            var params = {id: id, title: room.title}
+            console.log('Rendering template for: ')
+            console.log(params)
+            $row = $(Mustache.render(template, params))
+            $row.click(function(){
+                $('#roomModal').modal('toggle')
                 console.log('Joining room: ' + id)
                 PT.connectToHost(room.peer)
             })
+            $ul.append($row)
+            /*
+            $('#join-room-'+id).click(function(){
+                $('#roomModal').modal('toggle')
+                console.log('Joining room: ' + id)
+                PT.connectToHost(room.peer)
+            })
+            */
         })
+        $('#roomModal .modal-body').html($ul)
     },
     chat: {
         chatBody: null,
@@ -592,21 +678,21 @@ var PT = {
         filter: function(msg){
             //truncate
             if(msg.length > PT.config.maxChatLength){
-                msg = msg.substring(0,PT.config.maxChatLength);
+                msg = msg.substring(0,PT.config.maxChatLength)
             }
             //strip html
-            msg = $("<p>").html(msg).text();
+            msg = $('<p>').html(msg).text()
 
-            return msg;
+            return msg
         },
         emojify: function(msg){
             //replace common ascii emoticons with shortnames
-            msg = msg.replace(/:\)/g, ':smile:');
-            msg = msg.replace(/:D/g, ':grin:');
-            msg = msg.replace(/<3/g, ':heart:');
+            msg = msg.replace(/:\)/g, ':smile:')
+            msg = msg.replace(/:D/g, ':grin:')
+            msg = msg.replace(/<3/g, ':heart:')
 
             //convert emoji shortnames to image tags
-            msg = emojione.shortnameToImage(msg);
+            msg = emojione.shortnameToImage(msg)
 
             return msg;
         }
@@ -614,17 +700,17 @@ var PT = {
     connectToHost: function(hostPeer){
         if(PT.isHost){
             //host tries to connect to self
-            if(PT.peerId == hostPeer.id) return;
+            if(PT.peerId == hostPeer.id) return
 
             //TODO: make nonblocking HUD
-            var doDestroy = confirm('Joining a room will destroy your room!');
-            if(!doDestroy) return;
+            var doDestroy = confirm('Joining a room will destroy your room!')
+            if(!doDestroy) return
 
-            PT.stopHosting();
-            $(".audience-member").tooltip('destroy');
-            $('#moshpit').html('');
-            PT.chat.clear();
-            $('#create-room').text('Create Room');
+            PT.stopHosting()
+            $(".audience-member").tooltip('destroy')
+            $('#moshpit').html('')
+            PT.chat.clear()
+            $('#create-room').text('Create Room')
         }
 
         console.log('connecting to peer: ' + hostPeer.id);
@@ -673,17 +759,18 @@ var PT = {
             PT.player.pause();
         }
     },
+    //HOST function
     playNextDJSong: function(){
         if (PT.host.djQueue.length > 0) {
             //host is first in dj queue
-            if(PT.host.djQueue[0] == PT.peerId){
+            if(PT.host.djQueue[0] == PT.dummySelfPeer){
                 //don't start playing video until callback
                 var videoId = PT.frontOfSongQueue();
                 YT.getVideoMeta(videoId, function(meta){
                     PT.song.meta = meta;
                     PT.song.play(videoId,0); //play in host's player
                     PT.song.startTime = Date.now();
-                    PT.broadcastToRoom({type: 'song', value: videoId, dj: PT.peerId, time: 0}, null);
+                    PT.broadcastToRoom({type: 'song', value: videoId, dj: PT.username, time: 0}, null);
 
                     PT.song.timeout = setTimeout(function(){
                             console.log("Video ended");
@@ -696,6 +783,7 @@ var PT = {
                 PT.cycleMyQueue();
             }
             else{ //host is not first in queue
+                //ask front dj for song
                 PT.host.djQueue[0].send(JSON.stringify({type: 'queue-front'}))
             }
             
@@ -723,13 +811,20 @@ var PT = {
                 //check if the dj that left was the only dj
                 if(PT.host.djQueue.length == 0){
                     PT.song.end();
-                    PT.broadcastToRoom(JSON.stringify({type: 'end-song'}));
+                    PT.broadcastToRoom({msg: 'end-song'});
                 }
                 else{
                     PT.playNextDJSong();
                 }
             }
         }
+    },
+    addSongToQueue: function (meta) {
+        var template = $('#queueItemTmpl').html()
+        Mustache.parse(template)
+        var params = {title: meta.title,source: meta.source, id: meta.id}
+        $('#my-queue-list').append(Mustache.render(template, params))
+        $('.sortable').sortable()
     },
     cycleMyQueue: function(){
         $('#my-queue-list li').first().remove().appendTo('#my-queue-list')
