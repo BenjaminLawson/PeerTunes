@@ -373,6 +373,8 @@ var PT = {
             }else { // guest
               switch (data.type) {
                 case 'song':
+                  //TODO: fix dj queue button states
+
                   console.log('Received song data')
                   PT.vote = 0
                   PT.stopAllHeadBobbing()

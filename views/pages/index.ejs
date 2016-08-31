@@ -9,7 +9,7 @@
 										<h3 class="panel-title">My Queue</h3>
 									</div>
 									<div class="panel-body">
-										<ul id="my-queue-list" class="sortable">
+										<ul id="my-queue-list" class="sortable list-group">
 										</ul>
 									</div>
 									<div class="panel-footer">
@@ -108,9 +108,9 @@
 			<% include ../partials/createRoomModal %>
 
 			<script id="queueItemTmpl" type="x-tmpl-mustache">
-				<li data-source="{{ source }}" data-id="{{ id }}">
-					<h7>{{ title }}</h7>
-					<small>{{ source }}</small>
+				<li class="list-group-item" data-source="{{ source }}" data-id="{{ id }}">
+					<span class="badge">{{ source }}</span>
+					{{ title }}
 				</li>
 			</script>
 			<script id="chatMessageTmpl" type="x-tmpl-mustache">

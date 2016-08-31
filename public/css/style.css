@@ -70,17 +70,6 @@
 #my-queue-list{
 	padding-left: 0px;
 }
-#my-queue-list li{
-	list-style: none;
-	height: 62px;
-	width: 100%;
-	padding-top: 10px;
-	padding-left: 5px;
-
-	border-width: 0px 0px 2px 0px;
-    border-color: #999999;
-    border-style: solid;
-}
 
 /* Video Player */
 .video-js.vjs-default-skin .vjs-big-play-button, 
