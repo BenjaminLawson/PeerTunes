@@ -4,7 +4,8 @@
   "description": "PeerTunes",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify app.js -d -o public/js/app.js"
+    "build": "browserify app.js -d -o public/js/app.js",
+    "watch": "watchify app.js -d -o public/js/app.js && node server.js"
   },
   "dependencies": {
     "bittorrent-tracker": "^8.0.11",

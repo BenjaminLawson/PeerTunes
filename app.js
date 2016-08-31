@@ -24,9 +24,10 @@ TODO: templating
 TODO: HTML5 indexeddb to seed songs from
 https://github.com/localForage/localForage
 http://dexie.org/
-//TODO: uplaod images to imgur
-//TODO: add currently playing song to playlist
+TODO: uplaod images to imgur
+TODO: add currently playing song to playlist
 --- if mp3, download torrent and add to localstorage
+TODO: download mp3 before song starts
 */
 
 var hat = require('hat')
@@ -78,6 +79,7 @@ var PT = {
         trackerURL: 'wss://tracker.webtorrent.io'
     },
     tracker: null,
+    torrentClient: null,
     isHost: false, //true = this peer is a host, false = this peer is a client
     peers: [], //peers in swarm
     peerId: new Buffer(hat(160), 'hex'), //peer ID of this peer: new Buffer(hat(160), 'hex')
@@ -89,8 +91,8 @@ var PT = {
     rating: 0, //overall song rating
     inQueue: false, //if this peer is in DJ queue
     isDJ: false, //this peer is the dj
-    player: null, //videojs player object
-    host:{
+    player: {video: null, audio: null, preview: null}, //videojs player objects
+    host:{ //room data
         //TODO: make object literal instead of array?
         meta: {title: ''},
         guests: [], //client connections
@@ -110,7 +112,6 @@ var PT = {
         }
 
         console.log('Connecting to ws tracker: ' + PT.config.trackerURL)
-
         //set up tracker
         PT.tracker = new Tracker({
             peerId: PT.peerId,
@@ -120,16 +121,22 @@ var PT = {
         PT.tracker.start()
         PT.initTrackerListeners()
 
+        //set up webtorrent
+        //TODO: rtcConfig
+        global.WEBTORRENT_ANNOUNCE = [ PT.config.trackerURL ]
+        PT.torrentClient = new WebTorrent()
+
         //set up handlers
         PT.initClickHandlers()
         PT.initKeyHandlers()
 
-        PT.player = videojs('vid1')
+        PT.player.video = videojs('vid1')
+        PT.player.audio = videojs('vid2')
 
-        var audioPlayer = videojs('vid2')
-
-        //video player listeners
-        PT.player.ready(function() {
+        //video listeners
+        var players = [PT.player.video, PT.player.audio]
+        players.forEach(function (player) {
+            player.ready(function() {
                 //automatically hide/show player when song is playing
                 this.on("ended", function(){
                     $('#video-frame').hide()
@@ -137,7 +144,9 @@ var PT = {
                 this.on("play", function(){
                     $('#video-frame').show()
                 })
+            })
         })
+
 
 
         dragDrop('#my-queue', function (files) {
@@ -149,19 +158,13 @@ var PT = {
             var blob = new Blob([file])
             //TODO: get title of mp3?
             //store files in localstorage so they can be seeded in future
-            PT.addSongToQueue({title: key, source: 'MP3', id: key})
             localforage.setItem(key, blob).then(function () {
-              return localforage.getItem(key);
+                PT.addSongToQueue({title: key, source: 'MP3', id: key})
+                return localforage.getItem(key)
             }).then(function (value) {
-                // we got our value
-                //TODO: use piping/appendTo
-                var backToFile = new File([value], key, {type: 'audio/mp3', lastModified: Date.now()})
-                var url = window.URL.createObjectURL(backToFile)
-                console.log('file: ', backToFile)
-                console.log('file url: ', url)
-                audioPlayer.src({ type: 'audio/mp3', src: url })
+                // get and set successful
+
             }).catch(function (err) {
-              // we got an error
               console.log('Error retreiving file:', err)
             })
         })
@@ -273,7 +276,7 @@ var PT = {
                                     
                                     //send current song info
                                     if(PT.song.meta.id !== undefined){
-                                        var timeSinceStart = Date.now() - PT.song.startTime;
+                                        var timeSinceStart = PT.song.player.currentTime();
                                         peer.send(JSON.stringify({type: 'song', value: PT.song.meta.id, dj: 'todo DJ', time: timeSinceStart}))
                                     }
                                 }
@@ -343,42 +346,51 @@ var PT = {
                                     if (wasAtBottom) PT.chat.scrollToBottom();
                                     break;
                                 case 'song':
+                                    //request song answer from guest
                                     //verify dj is at front of queue
                                     //TODO: prevent front dj from repeatedly submitting songs
-                                    if(peer == PT.host.djQueue[0]){
+                                    if(peer === PT.host.djQueue[0]){
                                         //don't start playing video until callback
-                                        YT.getVideoMeta(data.value, function(meta){
+                                        if (data.value.source === 'YOUTUBE') {
+                                            YT.getVideoMeta(data.value.id, function(meta){
                                             PT.song.meta = meta;
-                                            PT.song.play(data.value, 0); //play in host's player
-                                            PT.song.startTime = Date.now();
-                                            PT.broadcastToRoom({type: 'song', value: data.value, dj: peer.id, time: 0}, null);
-                                            setTimeout(function(){
-                                                console.log("Video ended");
-                                                PT.host.djQueue.shift();
-                                                PT.playNextDJSong();
-                                            }, meta.duration);
-                                        });
+                                        })
+                                        }
+                                        var songInfo = {id: data.value.id, source: data.value.source}
+                                        if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
+
+                                        PT.song.play(songInfo, 0, PT.setSongTimeout); //play in host's player
+                                        PT.song.startTime = Date.now()
+                                        PT.broadcastToRoom({type: 'song', value: data.value, dj: peer.username, time: 0}, null)
                                     }
                                     break;
                                 default:
-                                    console.log('Received data of unkown type: ', data.type);
+                                    console.log('Received data of unkown type: ', data.type)
                             }
                         }
                         else { //guest
                              switch(data.type){
                                 case 'song':
-                                    PT.vote = 0;
-                                    PT.stopAllHeadBobbing();
-                                    PT.rating = 0;
-                                    PT.song.play(data.value, data.time);
+                                console.log('Received song data')
+                                    PT.vote = 0
+                                    PT.stopAllHeadBobbing()
+                                    PT.rating = 0
+
+                                    var songInfo = {id: data.value.id, source: data.value.source}
+
+                                    if(data.dj === PT.username){
+                                        PT.isDJ = true
+                                    }
+                                    else {
+                                        //only add infoHash if not the DJ
+                                        if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
+                                    }
+
+                                    PT.song.play(songInfo, data.time);
                                     //TODO: leave queue if no more dj's in queue
 
                                     //was dj for last song => cycle song queue
-                                    if (PT.isDJ) PT.cycleMyQueue();
-
-                                    if(data.dj == PT.peerId){
-                                        PT.isDJ = true;
-                                    }
+                                    if (PT.isDJ) PT.cycleMyQueue()
                                     else if(PT.isDJ){
                                         PT.isDJ = false;
                                         PT.inQueue = false;
@@ -395,10 +407,33 @@ var PT = {
                                     PT.removeAvatar(data.value);
                                     break;
                                 case 'queue-front':
+                                    //TODO: check that message if from host
                                     //host asks for dj's song at front of queue
                                     //implies this dj is at the front of the dj queue
-                                    var queueFront = PT.frontOfSongQueue();
-                                    PT.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}));
+                                    var queueFront = PT.frontOfSongQueue()
+                                    if (queueFront.source === 'MP3') {
+                                        //TODO: start seeding, get infoHash
+                                        //TODO: destroy last downloaded/seeded torrent
+                                        localforage.getItem(queueFront.id).then(function(value) {
+                                            // This code runs once the value has been loaded
+                                            // from the offline store.
+                                            var file = new File([value], queueFront.id, {type: 'audio/mp3', lastModified: Date.now()})
+                                            console.log('file: ', file)
+                                            PT.torrentClient.seed(file, function (torrent) {
+                                                console.log('Client is seeding ' + torrent.magnetURI)
+                                                console.log('infoHash: ', torrent.infoHash)
+                                                queueFront.infoHash = torrent.infoHash
+                                                PT.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
+                                            })
+
+                                        }).catch(function(err) {
+                                            // This code runs if there were any errors
+                                            console.log('Error retrieving mp3: ', err);
+                                        })
+                                    }
+                                    else{
+                                        PT.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
+                                    }
                                     break;
                                 default:
                                     console.log('received unknown data type: ', data.type);
@@ -411,9 +446,9 @@ var PT = {
             }
         })
         PT.tracker.on('update', function (data) {
-          console.log('got an announce response from tracker: ' + data.announce)
-          console.log('number of seeders in the swarm: ' + data.complete)
-          console.log('number of leechers in the swarm: ' + data.incomplete)
+          //console.log('got an announce response from tracker: ' + data.announce)
+          //console.log('number of seeders in the swarm: ' + data.complete)
+          //console.log('number of leechers in the swarm: ' + data.incomplete)
         })
 
         PT.tracker.on('error', function (err) {
@@ -742,57 +777,109 @@ var PT = {
     },
     song: {
         meta: {},
-        startTime: 0, //set to start time of this song (used to find time since start of song)
         timeout: null,
-        //TODO: source (soundcloud, youtube, etc.) parameter
-        play: function(id, time){//video id, start time
-            console.log('play id: ' + id + ' time: ' + time);
-            PT.player.src({ type: 'video/youtube', src: 'https://www.youtube.com/watch?v=' + id });
-            PT.player.currentTime(time/1000); //time in milliseconds, currentTime takes seconds
-            PT.player.play();
+        player: null,
+        play: function(data, time, callback){ //callback on metadata available
+            var id = data.id
+            var source = data.source
+            console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
+            console.log('play data: ', data)
+            //TODO: display:none other player
+            switch (source) {
+                case 'YOUTUBE':
+                    PT.song.player = PT.player.video
+                    PT.song.player.src({ type: 'video/youtube', src: 'https://www.youtube.com/watch?v=' + id })
+                    PT.song.player.currentTime(time/1000)
+                    $('#vid2').addClass('hide')
+                    $('#vid1').removeClass('hide')
+                    PT.song.player.play()
+                    PT.song.player.one('loadedmetadata', callback)
+                    break
+                case 'MP3':
+                    PT.song.player = PT.player.audio
+                    PT.song.meta.id = id
+                    $('#vid2').removeClass('hide')
+                    $('#vid1').addClass('hide')
+                    //if not this user's mp3, download torrent
+                    if (data.infoHash) {
+                        PT.torrentClient.add(data.infoHash, function (torrent) {
+                            var file = torrent.files[0]
+                            console.log('started downloading file: ', file)
+                            file.renderTo('#vid2_html5_api')
+                            PT.song.player.currentTime(time/1000)
+                            PT.song.player.play()
+                        })
+                    }
+                    else { //mp3 should be in localStorage
+                        localforage.getItem(id).then(function(value) {
+                            // This code runs once the value has been loaded
+                            // from the offline store.
+                            //TODO: get id3 data from mp3 file
+                            var file = new File([value], id, {type: 'audio/mp3', lastModified: Date.now()})
+                            var url = window.URL.createObjectURL(file)
+                            console.log('file: ', file)
+                            console.log('file url: ', url)
+                            PT.song.player.src({ type: 'audio/mp3', src: url })
+                            PT.song.player.currentTime(time/1000)
+                            PT.song.player.play()
+                            PT.song.player.one('loadedmetadata', callback)
+                        }).catch(function(err) {
+                            // This code runs if there were any errors
+                            console.log('Error retrieving mp3: ', err);
+                        })
+                    }
+                    
+                    break
+                default:
+                    console.log('Can\'t play unknown media type ', source)
+            }
             PT.rating = 0;
             PT.vote = 0;
             PT.stopAllHeadBobbing();
         },
         end: function(){
-            PT.player.trigger('ended');
-            PT.player.pause();
+            PT.song.player.trigger('ended');
+            PT.song.player.pause();
         }
     },
     //HOST function
     playNextDJSong: function(){
         if (PT.host.djQueue.length > 0) {
             //host is first in dj queue
-            if(PT.host.djQueue[0] == PT.dummySelfPeer){
+            if(PT.host.djQueue[0] === PT.dummySelfPeer){
                 //don't start playing video until callback
-                var videoId = PT.frontOfSongQueue();
-                YT.getVideoMeta(videoId, function(meta){
-                    PT.song.meta = meta;
-                    PT.song.play(videoId,0); //play in host's player
-                    PT.song.startTime = Date.now();
-                    PT.broadcastToRoom({type: 'song', value: videoId, dj: PT.username, time: 0}, null);
+                var media = PT.frontOfSongQueue()
+                if (media.source === 'YOUTUBE') {
+                    YT.getVideoMeta(media.id, function(meta){
+                            PT.song.meta = meta
+                    })
+                }
 
-                    PT.song.timeout = setTimeout(function(){
-                            console.log("Video ended");
-                            PT.host.djQueue.shift();
-                            PT.inQueue = false;
-                            $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue');
-                            PT.playNextDJSong();
-                    }, meta.duration);
-                });
-                PT.cycleMyQueue();
+                //callback setSongTimeout when video meta is available
+                PT.song.play({id: media.id, source: media.source}, 0, PT.setSongTimeout) //play in host's player
+                PT.broadcastToRoom({type: 'song', value: {id: media.id, source: media.source}, dj: PT.username, time: 0}, null)
+                PT.cycleMyQueue()
             }
             else{ //host is not first in queue
                 //ask front dj for song
                 PT.host.djQueue[0].send(JSON.stringify({type: 'queue-front'}))
             }
             
-
+            return
         }
-        else{
-            console.log('DJ queue empty');
-            PT.song.meta = {};
-        }
+        console.log('DJ queue empty')
+        PT.song.meta = {}
+    },
+    setSongTimeout: function () {
+        console.log('Player meta loaded, duration: ', PT.song.player.duration())
+        PT.song.timeout = setTimeout(function(){
+                console.log("song ended");
+                PT.host.djQueue.shift();
+                PT.inQueue = false;
+                $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue');
+                PT.playNextDJSong();
+                PT.song.meta = {}
+        }, PT.song.player.duration()*1000) //seconds -> milliseconds
     },
     //HOST function
     addDJToQueue: function(djId){
@@ -811,10 +898,10 @@ var PT = {
                 //check if the dj that left was the only dj
                 if(PT.host.djQueue.length == 0){
                     PT.song.end();
-                    PT.broadcastToRoom({msg: 'end-song'});
+                    PT.broadcastToRoom({msg: 'end-song'})
                 }
                 else{
-                    PT.playNextDJSong();
+                    PT.playNextDJSong()
                 }
             }
         }
@@ -828,14 +915,17 @@ var PT = {
     },
     cycleMyQueue: function(){
         $('#my-queue-list li').first().remove().appendTo('#my-queue-list')
-        $('.sortable').sortable(); //moving element breaks sortable, need to initialize again :P
+        $('.sortable').sortable() //moving element breaks sortable, need to initialize again :P
     },
     frontOfSongQueue: function(){
-        var queueSize = $('#my-queue-list li').length;
+        var queueSize = $('#my-queue-list li').length
         if(queueSize > 0){
-            return $('#my-queue-list li').first().text();
+            var $top = $('#my-queue-list li').first()
+            var song = {id: $top.data('id'), source: $top.data('source')}
+            console.log('frontOfSongQueue: ', song)
+            return song
         }
-        return null;
+        return null
     }
 }
 

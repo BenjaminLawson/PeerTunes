@@ -47,7 +47,6 @@
 										<audio 
 										    id="vid2" 
 										    class="video-js vjs-default-skin" 
-										    poster="http://i.imgur.com/jAwu0Xk.png"
 										    controls
 										    preload="auto"
 										    width="413" height="231"
@@ -110,8 +109,8 @@
 
 			<script id="queueItemTmpl" type="x-tmpl-mustache">
 				<li data-source="{{ source }}" data-id="{{ id }}">
-					<h5>{{ title }}</h5>
-					<span>{{ source }}</span>
+					<h7>{{ title }}</h7>
+					<small>{{ source }}</small>
 				</li>
 			</script>
 			<script id="chatMessageTmpl" type="x-tmpl-mustache">
@@ -121,7 +120,7 @@
 				<li class="cursor-pointer">
 					<div class="row">
 						<div class="col-md-10">
-							<span>{{ title }}</span>
+							<h5>{{ title }}</h5>
 							<span>Hosted by {{ id }}</span>
 						</div>
 						<div class="col-md-2">
