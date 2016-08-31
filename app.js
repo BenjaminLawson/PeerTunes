@@ -28,6 +28,7 @@ TODO: uplaod images to imgur
 TODO: add currently playing song to playlist
 --- if mp3, download torrent and add to localstorage
 TODO: download mp3 before song starts
+TodO: firefox support
 */
 
 var hat = require('hat')
@@ -100,7 +101,7 @@ var PT = {
     },
     //TODO: if peer hash in url, try to connect to that peer
     init: function(){
-        console.log('Initializing')
+        console.log('Initializing PeerTunes v0.0.2')
         //PT.username = prompt('Please enter your username (no spaces):')
         console.log('Your username: ', PT.username)
         PT.dummySelfPeer = {username: PT.username, id: PT.peerId}
@@ -275,9 +276,12 @@ var PT = {
                                     peer.send(JSON.stringify({msg: "new-user", value: PT.username}));
                                     
                                     //send current song info
+                                    //TODO
                                     if(PT.song.meta.id !== undefined){
                                         var timeSinceStart = PT.song.player.currentTime();
-                                        peer.send(JSON.stringify({type: 'song', value: PT.song.meta.id, dj: 'todo DJ', time: timeSinceStart}))
+                                        var song = {id: 'todo', source: 'todo'}
+                                        var data = {type: 'song', value: PT.song.meta.id, dj: PT.host.djQueue[0].username, time: timeSinceStart}
+                                        peer.send(JSON.stringify(data))
                                     }
                                 }
                                 break
@@ -802,6 +806,7 @@ var PT = {
                     $('#vid1').addClass('hide')
                     //if not this user's mp3, download torrent
                     if (data.infoHash) {
+                        console.log('Song has infoHash, leeching')
                         PT.torrentClient.add(data.infoHash, function (torrent) {
                             var file = torrent.files[0]
                             console.log('started downloading file: ', file)
@@ -811,6 +816,7 @@ var PT = {
                         })
                     }
                     else { //mp3 should be in localStorage
+                        console.log('Song does not have infoHash, getting from localstorage')
                         localforage.getItem(id).then(function(value) {
                             // This code runs once the value has been loaded
                             // from the offline store.
