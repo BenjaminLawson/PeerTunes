@@ -7,13 +7,13 @@ var localforage = require('localforage')
 var dragDrop = require('drag-drop')
 
 var YT = require('./YT')
+var chat = require('./chat')
 
 var PT = (function (PT) {
   //private
   PT = {
     config: {
       maxRoomSize: 50, // arbitrary until further testing
-      maxChatLength: 300,
       trackerURL: 'wss://tracker.webtorrent.io'
     },
     tracker: null,
@@ -179,15 +179,15 @@ var PT = (function (PT) {
                   PT.song.end()
                   break
                 case 'chat':
-                  var wasAtBottom = PT.chat.isScrolledToBottom()
+                  var wasAtBottom = chat.isScrolledToBottom()
                   if (PT.isHost) {
-                    data.text = PT.chat.filter(data.text)
+                    data.text = chat.filter(data.text)
                     PT.broadcastToRoom({msg: 'chat', value: {id: peer.username, text: data.text}}, peer)
-                    PT.chat.appendMsg(peer.username, data.text)
+                    chat.appendMsg(peer.username, data.text)
                   }else {
-                    PT.chat.appendMsg(data.value.id, data.value.text)
+                    chat.appendMsg(data.value.id, data.value.text)
                   }
-                  if (wasAtBottom) PT.chat.scrollToBottom()
+                  if (wasAtBottom) chat.scrollToBottom()
                   break
                 case 'leave':
                   if (PT.isHost) PT.cleanupPeer(peer)
@@ -312,17 +312,6 @@ var PT = (function (PT) {
         console.log(err)
       })
     },
-    initKeyHandlers: function () {
-      var key = {
-        ENTER: 13
-      }
-
-      $('#chat-text').keydown(function (e) {
-        if (e.keyCode == key.ENTER) {
-          PT.chat.submitMessage()
-        }
-      })
-    },
     initClickHandlers: function () {
       console.log('initializing click handlers')
       // queue
@@ -336,7 +325,7 @@ var PT = (function (PT) {
 
         $('.audience-member').tooltip('destroy')
         $('#moshpit').html('')
-        PT.chat.clear()
+        chat.clear()
 
         if (PT.isHost) { // button = Destroy Room
           $(this).text('Create Room')
@@ -420,17 +409,12 @@ var PT = (function (PT) {
       $('#room-refresh').click(function (event) {
         PT.refreshRoomListing()
       })
-      // chat
-      // TODO max length
-      $('#chat-enter').click(function (event) {
-        PT.chat.submitMessage()
-      })
     },
     startHosting: function (title) {
       console.log('Starting hosting')
 
       PT.addAvatar(PT.username)
-      PT.chat.appendMsg('Notice', 'Room Created')
+      chat.appendMsg('Notice', 'Room Created')
 
       PT.broadcast({username: PT.username})
       PT.broadcast({msg: 'new-room', value: title})
@@ -490,7 +474,7 @@ var PT = (function (PT) {
     resetRoom: function () {
       $('.audience-member').tooltip('destroy')
       $('#moshpit').html('')
-      PT.chat.clear()
+      chat.clear()
     },
     refreshRoomListing: function () {
       console.log('refreshing room listing')
@@ -516,72 +500,6 @@ var PT = (function (PT) {
       })
       $('#roomModal .modal-body').html($ul)
     },
-    chat: {
-      chatBody: null,
-      appendMsg: function (id, msg) {
-        // order important
-        msg = PT.chat.filter(msg)
-        console.log('chat: [' + id + ' : ' + msg + ']')
-        msg = PT.chat.emojify(msg)
-        // TODO: use template
-        PT.chat.chatBody.append(
-          '<div class="message">'
-          + '<div class="message-user"><h6>' + id + ':</h6></div>'
-          + '<div class="message-text">' + msg + '</div>'
-          + '</div>'
-        )
-      },
-      isScrolledToBottom: function () {
-        return (PT.chat.chatBody[0].scrollHeight - PT.chat.chatBody[0].offsetHeight - PT.chat.chatBody[0].scrollTop < 1)
-      },
-      scrollToBottom: function () {
-        var height = PT.chat.chatBody[0].scrollHeight
-        PT.chat.chatBody.scrollTop(height)
-      },
-      submitMessage: function () {
-        var text = $('#chat-text').val()
-
-        text = PT.chat.filter(text)
-
-        if (text.trim().length > 0) {
-          if (PT.isHost) {
-            PT.broadcastToRoom({msg: 'chat', value: {id: PT.username + ' [Host]', text: text}})
-          }else {
-            if (PT.hostPeer != null) {
-              PT.hostPeer.send(JSON.stringify({msg: 'chat', text: text}))
-            }
-          }
-
-          PT.chat.appendMsg(PT.username, text)
-          $('#chat-text').val('')
-          PT.chat.scrollToBottom()
-        }
-      },
-      clear: function () {
-        $('#chat .panel-body').html('')
-      },
-      filter: function (msg) {
-        // truncate
-        if (msg.length > PT.config.maxChatLength) {
-          msg = msg.substring(0, PT.config.maxChatLength)
-        }
-        // strip html
-        msg = $('<p>').html(msg).text()
-
-        return msg
-      },
-      emojify: function (msg) {
-        // replace common ascii emoticons with shortnames
-        msg = msg.replace(/:\)/g, ':smile:')
-        msg = msg.replace(/:D/g, ':grin:')
-        msg = msg.replace(/<3/g, ':heart:')
-
-        // convert emoji shortnames to image tags
-        msg = emojione.shortnameToImage(msg)
-
-        return msg
-      }
-    },
     connectToHost: function (hostPeer) {
       if (PT.isHost) {
         // host tries to connect to self
@@ -594,7 +512,7 @@ var PT = (function (PT) {
         PT.stopHosting()
         $('.audience-member').tooltip('destroy')
         $('#moshpit').html('')
-        PT.chat.clear()
+        chat.clear()
         $('#create-room').text('Create Room')
       }
 
@@ -843,9 +761,26 @@ var PT = (function (PT) {
       console.log('Initializing PeerTunes v0.0.2')
       // PT.username = prompt('Please enter your username (no spaces):')
       console.log('Your username: ', PT.username)
+
       PT.dummySelfPeer = {username: PT.username, id: PT.peerId}
-      // assign common jQuery selectors
-      PT.chat.chatBody = $('#chat .panel-body')
+
+      // assign chat selectors
+      chat.setBody('#chat .panel-body')
+      chat.setInput('#chat-text')
+      chat.setEnterButton('#chat-enter')
+      chat.init()
+
+      chat.setNickname(PT.username)
+
+      chat.onSubmitSuccess(function (text) {
+        if (PT.isHost) {
+          PT.broadcastToRoom({msg: 'chat', value: {id: PT.username + ' [Host]', text: text}})
+        } else {
+          if (PT.hostPeer != null) {
+            PT.hostPeer.send(JSON.stringify({msg: 'chat', text: text}))
+          }
+        }
+      })
 
       if (!Peer.WEBRTC_SUPPORT) {
         window.alert('This browser is unsupported. Please use a browser with WebRTC support.')
@@ -868,7 +803,6 @@ var PT = (function (PT) {
 
       // set up handlers
       PT.initClickHandlers()
-      PT.initKeyHandlers()
 
       PT.player.video = videojs('vid1')
       PT.player.audio = videojs('vid2')
@@ -886,7 +820,7 @@ var PT = (function (PT) {
           })
         })
       })
-
+      //TODO: move to queue module
       dragDrop('#my-queue', function (files) {
         // console.log('Here are the dropped files', files)
         var file = files[0]
