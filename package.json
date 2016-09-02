@@ -1,11 +1,11 @@
 {
   "name": "PeerTunes",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "PeerTunes",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "browserify app.js -d -o public/js/app.js",
-    "watch": "watchify app.js -d -o public/js/app.js && node server.js"
+    "build": "browserify src/main.js -d -o public/js/app.js",
+    "watch": "watchify src/main.js -d -o public/js/app.js && node server.js"
   },
   "dependencies": {
     "bittorrent-tracker": "^8.0.11",
