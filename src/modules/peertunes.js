@@ -176,6 +176,8 @@ var PT = (function (PT) {
                   break
                 case 'end-song':
                   // end song prematurely (eg. the host leaves dj queue while their song is playing)
+                  //TODO: remove timeout, but still execute timeout code
+                  //if (PT.isDJ) PT.song.timeout
                   PT.song.end()
                   break
                 case 'chat':
@@ -241,6 +243,8 @@ var PT = (function (PT) {
                 switch (data.type) {
                   case 'song':
                     //TODO: fix dj queue button states
+                    //move queue code to song end event
+                    //since there might not be a next song
 
                     console.log('Received song data')
                     PT.vote = 0
@@ -256,16 +260,7 @@ var PT = (function (PT) {
                       if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
                     }
 
-                    PT.song.play(songInfo, data.time)
-                    // TODO: leave queue if no more dj's in queue
-                    $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
-                    // was dj for last song => cycle song queue
-                    if (PT.isDJ) PT.cycleMyQueue()
-                    else if (PT.isDJ) {
-                      PT.isDJ = false
-                      PT.inQueue = false
-                      $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
-                    }
+                    PT.song.play(songInfo, data.time, PT.setSongTimeout)
                     break
                   case 'queue-front':
                   // host asks for dj's song at front of queue
@@ -316,7 +311,12 @@ var PT = (function (PT) {
       console.log('initializing click handlers')
       // queue
       $('#song-submit-button').click(function (e) {
-        PT.addSongToQueue({title: $('#song-submit-text').val(), source: 'YOUTUBE', id: $('#song-submit-text').val()})
+        console.log('clicked submit song')
+        var id = $('#song-submit-text').val()
+        YT.getVideoMeta(id, function (meta) {
+          console.log('Adding ', meta.title)
+          PT.addSongToQueue({title: meta.title, source: 'YOUTUBE', id: id})
+        })
         $('#song-submit-text').val('')
       })
       // create room
@@ -350,6 +350,7 @@ var PT = (function (PT) {
 
       // join DJ queue
       $('#btn-join-queue').click(function (e) {
+        console.log('Clicked join/leave queue')
         if (!PT.inQueue) {
           PT.inQueue = true
           if (PT.isHost) {
@@ -358,7 +359,7 @@ var PT = (function (PT) {
             PT.hostPeer.send(JSON.stringify({type: 'join-queue'}))
           }
           $(this).removeClass('btn-primary').addClass('btn-info').text('Leave DJ Queue')
-        }else {
+        } else { //is already in queue
           PT.inQueue = false
           $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
           if (PT.isHost) {
@@ -561,12 +562,16 @@ var PT = (function (PT) {
             PT.song.player.src({ type: 'video/youtube', src: 'https://www.youtube.com/watch?v=' + id })
             PT.song.player.currentTime(time / 1000)
 
-            // show only vide player
+            // show only video player
             $('#vid2').addClass('hide')
             $('#vid1').removeClass('hide')
 
-            PT.song.player.play()
-            PT.song.player.one('loadedmetadata', callback)
+            YT.getVideoMeta(id, function (meta) {
+              console.log('Got YouTube video metadata: ', meta)
+              PT.song.meta = meta
+              PT.song.player.play()
+              if (callback) callback()
+            })
             break
           case 'MP3':
             PT.song.player = PT.player.audio
@@ -599,7 +604,13 @@ var PT = (function (PT) {
                 PT.song.player.src({ type: 'audio/mp3', src: url })
                 PT.song.player.currentTime(time / 1000)
                 PT.song.player.play()
-                PT.song.player.one('loadedmetadata', callback)
+                //TODO: only called first time- fix
+                PT.song.player.one('loadedmetadata', function(){
+                  PT.song.meta = {
+                    duration: PT.song.player.duration()
+                  }
+                  if (callback) callback()
+                })
               }).catch(function (err) {
                 // This code runs if there were any errors
                 console.log('Error retrieving mp3: ', err)
@@ -625,18 +636,15 @@ var PT = (function (PT) {
         // host is first in dj queue
         if (PT.host.djQueue[0] === PT.dummySelfPeer) {
           console.log('Host (you) is the next DJ')
-          // don't start playing video until callback
+          PT.isDJ = true
+
           var media = PT.frontOfSongQueue()
-          if (media.source === 'YOUTUBE') {
-            YT.getVideoMeta(media.id, function (meta) {
-              PT.song.meta = meta
-            })
-          }
 
           // callback setSongTimeout when video meta is available
-          // TODO: seed song
           PT.song.play({id: media.id, source: media.source}, 0, PT.setSongTimeout) // play in host's player
+
           if (media.source === 'MP3') {
+            //start seeding file to guests
             PT.seedFileWithKey(media.id, function (torrent) {
               media.infoHash = torrent.infoHash
               PT.broadcastToRoom({type: 'song', value: media, dj: PT.username, time: 0}, null)
@@ -644,7 +652,6 @@ var PT = (function (PT) {
           }
           else PT.broadcastToRoom({type: 'song', value: media, dj: PT.username, time: 0}, null)
 
-          PT.cycleMyQueue()
         }else { // host is not first in queue
           // ask front dj for song
           PT.host.djQueue[0].send(JSON.stringify({type: 'queue-front'}))
@@ -655,36 +662,60 @@ var PT = (function (PT) {
       console.log('DJ queue empty')
       PT.song.meta = {}
     },
+    //TODO: move functionality otu of timeout so it can be called if song ends prematurely
+    //since videojs meta is only loaded once
     setSongTimeout: function () {
-      console.log('Player meta loaded, duration: ', PT.song.player.duration())
+      console.log('Player meta loaded, duration: ', PT.song.meta.duration) //seconds
       if (PT.isHost) {
         PT.song.timeout = setTimeout(function () {
           console.log('song ended')
+
+          if (PT.host.djQueue[0] === PT.dummySelfPeer) {
+            PT.cycleMyQueue()
+            PT.isDJ = false
+            PT.inQueue = false
+            $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
+          }
+
           PT.host.djQueue.shift()
-          PT.inQueue = false
+          PT.song.currentlyPlaying = {}
+          PT.song.meta = {}
           PT.playNextDJSong()
-        }, PT.song.player.duration() * 1000) // seconds -> milliseconds
+        }, PT.song.meta.duration * 1000) //seconds -> milliseconds
+      } else if (PT.isDJ){
+        //TODO: use videojs end event for guests
+        PT.song.timeout = setTimeout(function () {
+          console.log('song ended')
+          PT.isDJ = false
+          PT.inQueue = false
+          $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
+
+          PT.host.djQueue.shift()
+        }, PT.song.meta.duration * 1000) //seconds -> milliseconds
       }
-      // TODO
-      PT.song.currentlyPlaying = {}
-      PT.song.meta = {}
     },
     // HOST function
-    addDJToQueue: function (djId) {
-      PT.host.djQueue.push(djId)
-      if (PT.host.djQueue.length == 1) {
+    addDJToQueue: function ( peer ) {
+      console.log('Adding ', peer.username, ' to DJ queue')
+
+      PT.host.djQueue.push( peer )
+
+      console.log('DJ queue length: ', PT.host.djQueue.length)
+
+      //the queue was empty before, so play the new DJ's song
+      if (PT.host.djQueue.length === 1) {
         PT.playNextDJSong()
       }
     },
     // HOST function
-    removeDJFromQueue: function (peer) {
-      var index = PT.host.djQueue.indexOf(peer)
+    removeDJFromQueue: function ( peer ) {
+      var index = PT.host.djQueue.indexOf( peer )
       if (index > -1) {
         PT.host.djQueue.splice(index, 1)
         if (index == 0) { // currently playing dj
           clearTimeout(PT.song.timeout)
           // check if the dj that left was the only dj
-          if (PT.host.djQueue.length == 0) {
+          if (PT.host.djQueue.length === 0) {
             PT.song.end()
             PT.broadcastToRoom({msg: 'end-song'})
           }else {
@@ -698,11 +729,9 @@ var PT = (function (PT) {
       Mustache.parse(template)
       var params = {title: meta.title,source: meta.source, id: meta.id}
       $('#my-queue-list').append(Mustache.render(template, params))
-      $('.sortable').sortable()
     },
     cycleMyQueue: function () {
       $('#my-queue-list li').first().remove().appendTo('#my-queue-list')
-      $('.sortable').sortable() // moving element breaks sortable, need to initialize again :P
     },
     frontOfSongQueue: function () {
       var queueSize = $('#my-queue-list li').length
@@ -840,6 +869,9 @@ var PT = (function (PT) {
           console.log('Error retreiving file:', err)
         })
       })
+
+      //init Dragula in queue
+      dragula([document.querySelector('#my-queue-list')]);
     }
   }
 }(PT || {}))

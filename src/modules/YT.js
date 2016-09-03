@@ -14,7 +14,7 @@ module.exports = (function () {
         id: id,
         title: '',
         description: '',
-        duration: 0 // milliseconds
+        duration: 0 //seconds
       }
 
       var apiQuery = 'https://www.googleapis.com/youtube/v3/videos?id=' + id + '&key=' + config.apiKey + '&part=snippet,contentDetails'
@@ -22,13 +22,13 @@ module.exports = (function () {
 
       console.log('YT API query: ', apiQuery)
       $.getJSON(apiQuery, function (result) {
-        console.log('YT API Result: ', result)
+        //console.log('YT API Result: ', result)
         firstResult = result.items[0]
         meta.title = firstResult.snippet.title
         meta.description = firstResult.snippet.description
         // YouTube gives duration in ISO format, need to convert to milliseconds
         ISODuration = firstResult.contentDetails.duration
-        meta.duration = moment.duration(ISODuration).asMilliseconds()
+        meta.duration = moment.duration(ISODuration).asSeconds()
         callback(meta)
       })
     }

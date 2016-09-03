@@ -4,6 +4,7 @@ Only supported target: Chrome
 mp3 MediaSource only works in Chrome, not firefox
 - play song at current time after song is fully downloaded in firefox?
 - download song ahead of time?
+- no seeking support
 
 Future features:
 -seed & play mp3 file (not permanent in queue?)
@@ -11,7 +12,9 @@ Future features:
 -store playlist in localstorage
 -let user pause, but keep timer so on play it jumps to current time
 
-TODO: use bootstrap list group
+TODO: host sends start time, instad of time since start, for more accurate guest time calculation
+
+TODO: use bootstrap list groups
 
 TODO: hosts broadcast room population every 5 minutes
 TODO: use Dragula for queue drag/drop
