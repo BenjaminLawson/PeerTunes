@@ -13,6 +13,7 @@ Future features:
 -let user pause, but keep timer so on play it jumps to current time
 
 TODO: host sends start time, instad of time since start, for more accurate guest time calculation
+TODO: fix bug if you try to join your own room
 
 TODO: use bootstrap list groups
 
@@ -33,6 +34,18 @@ TODO: add currently playing song to playlist
 TODO: download mp3 before song starts
 TODO: firefox support
 TODO: hash ip address and display with username as reinforcement of identity
+TODO: friend system:
+-ask peer to accept friend request
+-if accepts, send a secret hash
+-friend stores secret hash
+-next time peer with username/id of friend appears, ask them for the secret hash to confirm identity
+TODO: export/import data (playlist, mp3s, friends)
+TODO: store export/state into dropbox, etc. with api?
+
+Turn server:
+turn:numb.viagenie.ca
+username: peertunes.turn@gmail.com
+credential: peertunes-turn
 */
 
 var PT = require('./modules/peertunes')

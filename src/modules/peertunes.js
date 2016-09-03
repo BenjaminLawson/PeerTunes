@@ -816,11 +816,22 @@ var PT = (function (PT) {
       }
 
       console.log('Connecting to ws tracker: ' + PT.config.trackerURL)
+
+      var rtcConfig = {
+        iceServers: [
+          {"urls":"stun:stun.l.google.com:19302"},
+          {"urls":"stun:stun3.l.google.com:19302"},
+          {"urls":"stun:stun4.l.google.com:19302"},
+          {"urls":"turn:numb.viagenie.ca","username":"peertunes.turn@gmail.com","credential":"peertunes-turn"}
+        ]
+      }
+
       // set up tracker
       PT.tracker = new Tracker({
         peerId: PT.peerId,
         announce: PT.config.trackerURL,
-        infoHash: new Buffer(20).fill('01234567890123456789') // temp
+        infoHash: new Buffer(20).fill('01234567890123456789'), // temp
+        rtcConfig: rtcConfig
       })
       PT.tracker.start()
       PT.initTrackerListeners()
@@ -828,7 +839,11 @@ var PT = (function (PT) {
       // set up webtorrent
       // TODO: rtcConfig
       global.WEBTORRENT_ANNOUNCE = [ PT.config.trackerURL ]
-      PT.torrentClient = new WebTorrent()
+      PT.torrentClient = new WebTorrent({
+        tracker: {
+          rtcConfig: rtcConfig
+        }
+      })
 
       // set up handlers
       PT.initClickHandlers()
