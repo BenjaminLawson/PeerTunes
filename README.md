@@ -1,7 +1,7 @@
 # PeerTunes
 PeerTunes is a decentralized Peer-to-Peer social music experience for the browser.
 ### Development
- - Automatically build changes to app.js : `npm run-script watch`
+ - Automatically build changes to src/main.js : `npm run-script watch`
  - Start local web server: `npm start`
 ### How
  - Users join bittorrent swarm where peers announce rooms
