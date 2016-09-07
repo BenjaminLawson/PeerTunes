@@ -1,5 +1,8 @@
 # PeerTunes
 PeerTunes is a decentralized Peer-to-Peer social music experience for the browser.
+### Development
+ - Automatically build changes to app.js : `npm run-script watch`
+ - Start local web server: `npm start`
 ### How
  - Users join bittorrent swarm where peers announce rooms
  - Users subscribe to room updates from host peer
@@ -26,19 +29,14 @@ PeerTunes is a decentralized Peer-to-Peer social music experience for the browse
  - Max peer connection limit (unknown)
  - Max amount of peers host can support (unknown)
  - More open to abuse
-
- ### Alternatives
-  - ~~TurnTable.fm~~ ($7 - 7.5M seed funding) [Bankrupt]
-
+### Alternatives
+ - ~~TurnTable.fm~~ ($7 - 7.5M seed funding) [Bankrupt]
   https://techcrunch.com/2013/11/22/turntable-fm-shutting-down-so-company-can-focus-on-turntable-live-events-platform/
   
   "Founder Billy Chasen said that the removal of the ability to upload music was able to save the company about $20k a month"
-  
-   - Dubtrack.fm [Alive, popular]
- 
+ - Dubtrack.fm [Alive, popular]
 https://www.reddit.com/r/dubtrack/comments/4qqca0/can_dubtrack_devs_please_make_the_queue_menu/d4v2erw
-"...it's been costing pretty much $9,000 a month for the past few months"
-
+ "...it's been costing pretty much $9,000 a month for the past few months"
  - Plug.dj ($1.25M in Seed Funding) [Bankrupt, then bought out & resurrected, popular]
  - Soundtrack.io (open source) [No users]
  - Jukebox.today [No users]
