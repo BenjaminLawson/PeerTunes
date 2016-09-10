@@ -48,6 +48,13 @@ username: peertunes.turn@gmail.com
 credential: peertunes-turn
 */
 
-var PT = require('./modules/peertunes')
+var PeerTunes = require('./modules/peertunes')
 
-$(document).ready(PT.init)
+var PT = new PeerTunes({
+  maxRoomSize: 50, // arbitrary until further testing
+  trackerURL: 'wss://tracker.webtorrent.io'
+})
+
+$(document).ready(function () {
+	PT.init()
+})
