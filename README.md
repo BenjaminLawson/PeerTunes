@@ -1,7 +1,7 @@
 # PeerTunes
 PeerTunes is a decentralized Peer-to-Peer social music experience for the browser.
 ### Development
- - Automatically build changes to app.js : `npm run-script watch`
+ - Automatically build changes to src/main.js : `npm run-script watch`
  - Start local web server: `npm start`
 ### How
  - Users join bittorrent swarm where peers announce rooms
@@ -32,11 +32,12 @@ PeerTunes is a decentralized Peer-to-Peer social music experience for the browse
 ### Alternatives
  - ~~TurnTable.fm~~ ($7 - 7.5M seed funding) [Bankrupt]
   https://techcrunch.com/2013/11/22/turntable-fm-shutting-down-so-company-can-focus-on-turntable-live-events-platform/
-  
   "Founder Billy Chasen said that the removal of the ability to upload music was able to save the company about $20k a month"
+  
  - Dubtrack.fm [Alive, popular]
 https://www.reddit.com/r/dubtrack/comments/4qqca0/can_dubtrack_devs_please_make_the_queue_menu/d4v2erw
  "...it's been costing pretty much $9,000 a month for the past few months"
+ 
  - Plug.dj ($1.25M in Seed Funding) [Bankrupt, then bought out & resurrected, popular]
  - Soundtrack.io (open source) [No users]
  - Jukebox.today [No users]
@@ -45,5 +46,6 @@ https://www.reddit.com/r/dubtrack/comments/4qqca0/can_dubtrack_devs_please_make_
  - ~~Qus~~ (mobile) [Shut down by streaming services]
 https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
 "Incredible user response to our app drew the attention of some of the streaming services supported in Qus and, unfortunately, some of them have claimed that we are operating outside of their respective Terms of Use"
+
  - ~~BudtoBud~~ (desktop) [Shut down]
  - ~~Sounddrop.fm~~ [Killed by Spotify]
