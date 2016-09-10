@@ -135,10 +135,10 @@ var PT = (function (PT) {
                     // send current song info
                     // TODO
                     if (PT.song.currentlyPlaying != null) {
-                      var timeSinceStart = PT.song.player.currentTime()
+                      //var timeSinceStart = PT.song.player.currentTime()
                       var song = PT.song.currentlyPlaying
                       console.log('Sending new user song: ', song)
-                      var data = {type: 'song', value: song, dj: PT.host.djQueue[0].username, time: timeSinceStart}
+                      var data = {type: 'song', value: song, dj: PT.host.djQueue[0].username, time: PT.song.startTime}
                       peer.send(JSON.stringify(data))
                     }
                   }
@@ -232,8 +232,9 @@ var PT = (function (PT) {
                       if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
 
                       PT.song.play(songInfo, 0, PT.setSongTimeout); // play in host's player
-                      PT.song.startTime = Date.now()
-                      PT.broadcastToRoom({type: 'song', value: songInfo, dj: peer.username, time: 0}, null)
+                    	var now = Date.now()
+      	  						PT.song.startTime = now
+                      PT.broadcastToRoom({type: 'song', value: songInfo, dj: peer.username, time: now}, null)
                     }
                     break
                   default:
@@ -259,8 +260,8 @@ var PT = (function (PT) {
                       // only add infoHash if not the DJ
                       if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
                     }
-
-                    PT.song.play(songInfo, data.time, PT.setSongTimeout)
+                  	var currentTime = Date.now() - data.time
+                    PT.song.play(songInfo, currentTime, PT.setSongTimeout)
                     break
                   case 'queue-front':
                   // host asks for dj's song at front of queue
@@ -549,7 +550,8 @@ var PT = (function (PT) {
       timeout: null,
       player: null,
       currentlyPlaying: null, // {id, source, infoHash}
-      play: function (data, time, callback) { // callback on metadata available
+      startTime: null, //TODO: Date object of when song started playing, sent to guests instead of current time in song
+      play: function (data, time, callback) { // time in milliseconds, callback on metadata available
         PT.song.currentlyPlaying = data
         var id = data.id
         var source = data.source
@@ -560,16 +562,17 @@ var PT = (function (PT) {
           case 'YOUTUBE':
             PT.song.player = PT.player.video
             PT.song.player.src({ type: 'video/youtube', src: 'https://www.youtube.com/watch?v=' + id })
-            PT.song.player.currentTime(time / 1000)
+            PT.song.player.currentTime(time / 1000) //milliseconds -> seconds
+            PT.song.player.play()
 
             // show only video player
             $('#vid2').addClass('hide')
             $('#vid1').removeClass('hide')
 
+            //TODO: do before song plays
             YT.getVideoMeta(id, function (meta) {
               console.log('Got YouTube video metadata: ', meta)
               PT.song.meta = meta
-              PT.song.player.play()
               if (callback) callback()
             })
             break
@@ -588,8 +591,9 @@ var PT = (function (PT) {
                 var file = torrent.files[0]
                 console.log('started downloading file: ', file)
                 file.renderTo('#vid2_html5_api')
-                PT.song.player.currentTime(time / 1000)
+                PT.song.player.currentTime(time / 1000) //milliseconds -> seconds
                 PT.song.player.play()
+                //PT.song.startTime = new Date()
               })
             }else { // mp3 should be in localStorage
               console.log('Song does not have infoHash, getting from localstorage')
@@ -602,8 +606,9 @@ var PT = (function (PT) {
                 console.log('file: ', file)
                 console.log('file url: ', url)
                 PT.song.player.src({ type: 'audio/mp3', src: url })
-                PT.song.player.currentTime(time / 1000)
+                PT.song.player.currentTime(time / 1000) //milliseconds -> seconds
                 PT.song.player.play()
+                //PT.song.startTime = new Date()
                 //TODO: only called first time- fix
                 PT.song.player.one('loadedmetadata', function(){
                   PT.song.meta = {
@@ -643,14 +648,17 @@ var PT = (function (PT) {
           // callback setSongTimeout when video meta is available
           PT.song.play({id: media.id, source: media.source}, 0, PT.setSongTimeout) // play in host's player
 
+          var now = Date.now()
+      	  PT.song.startTime = now
+
           if (media.source === 'MP3') {
             //start seeding file to guests
             PT.seedFileWithKey(media.id, function (torrent) {
               media.infoHash = torrent.infoHash
-              PT.broadcastToRoom({type: 'song', value: media, dj: PT.username, time: 0}, null)
+              PT.broadcastToRoom({type: 'song', value: media, dj: PT.username, startTime: now}, null)
             })
           }
-          else PT.broadcastToRoom({type: 'song', value: media, dj: PT.username, time: 0}, null)
+          else PT.broadcastToRoom({type: 'song', value: media, dj: PT.username, startTime: now}, null)
 
         }else { // host is not first in queue
           // ask front dj for song
