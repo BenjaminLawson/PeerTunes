@@ -314,6 +314,12 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   // modal create room
   $('#modal-btn-create-room').click(function (e) {
+  	if ($('#roomNameInput').val().length < 1) {
+  		e.stopPropagation()
+  		$('#create-room-form-group').addClass('has-error')
+  		return
+  	}
+  	$('#create-room-form-group').removeClass('has-error')
     $('#btn-create-room').text('Destroy Room')
     self.leaveRoom()
     self.startHosting($('#roomNameInput').val())
