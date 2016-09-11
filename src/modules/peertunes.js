@@ -46,6 +46,7 @@ function PeerTunes (config) {
     player: null,
     currentlyPlaying: null, // {id, source, infoHash}
     startTime: null, // TODO: Date object of when song started playing, sent to guests instead of current time in song
+    infoHash: null, //infohash of torrent if current song is MP3
     play: function (data, time, callback) { // time in milliseconds, callback on metadata available
     	callback = callback.bind(self)
       this.currentlyPlaying = data
@@ -85,7 +86,11 @@ function PeerTunes (config) {
           if (data.infoHash) {
             console.log('Song has infoHash, leeching')
             self.removeLastTorrent()
-            self.torrentClient.add(data.infoHash, function (torrent) {
+            //TODO: callback not being called until download is complete, use different torrent event?
+            //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
+            //once it starts, it is fast
+            //instant when guest downloads from host
+            var tr = self.torrentClient.add(data.infoHash, function (torrent) {
             	self.currentTorrentID = torrent.infoHash
               var file = torrent.files[0]
               console.log('started downloading file: ', file)
@@ -94,7 +99,13 @@ function PeerTunes (config) {
               this.player.play()
             // PT.song.startTime = new Date()
             }.bind(this)) //song object context
-          }else { // mp3 should be in localStorage
+            tr.on('download', function (bytes) {
+						  console.log('just downloaded: ' + bytes)
+						  console.log('total downloaded: ' + tr.downloaded);
+						  console.log('download speed: ' + tr.downloadSpeed)
+						  console.log('progress: ' + tr.progress)
+						})
+          } else { // mp3 should be in localStorage
             console.log('Song does not have infoHash, getting from localstorage')
             localforage.getItem(id).then(function (value) {
               // This code runs once the value has been loaded
@@ -139,7 +150,6 @@ function PeerTunes (config) {
 
 PeerTunes.prototype.init = function () {
   var self = this
-  console.log(this)
 
   console.log('Initializing PeerTunes')
 
@@ -171,7 +181,7 @@ PeerTunes.prototype.init = function () {
     }
   })
 
-  console.log('Connecting to ws tracker: ' + this.config.trackerURL)
+  //console.log('Connecting to ws tracker: ' + this.config.trackerURL)
 
   var rtcConfig = {
     iceServers: [
@@ -197,7 +207,8 @@ PeerTunes.prototype.init = function () {
   global.WEBTORRENT_ANNOUNCE = [ this.config.trackerURL ]
   this.torrentClient = new WebTorrent({
     tracker: {
-      rtcConfig: rtcConfig
+      rtcConfig: rtcConfig,
+      announce: ['wss://tracker.webtorrent.io','wss://tracker.openwebtorrent.com','wss://tracker.btorrent.xyz']
     }
   })
 
@@ -234,6 +245,7 @@ PeerTunes.prototype.init = function () {
     self.addSongToQueue({title: key, source: 'MP3', id: key})
     localforage.setItem(key, blob).then(function () {
       //self.addSongToQueue({title: key, source: 'MP3', id: key})
+      console.log('Done saving file to localstorage')
       return localforage.getItem(key)
     }).then(function (value) {
       //set successful
@@ -449,6 +461,7 @@ PeerTunes.prototype.resetRoom = function () {
   $('.audience-member').tooltip('destroy')
   $('#moshpit').html('')
   chat.clear()
+  this.song.end()
 }
 
 PeerTunes.prototype.refreshRoomListing = function () {
@@ -504,14 +517,14 @@ PeerTunes.prototype.addAvatar = function (id) {
   var x = Math.random() * 80 + 10
   var y = Math.random() * 100 + 5
   var userId = 'user-' + id
-  // TODO: use template
-  $('#moshpit').append('\
-              <div id="' + userId + '"class="audience-member" style="left: ' + x + '%; top: ' + y + '%; z-index: ' + Math.floor(y) + '"\
-                  data-toggle="tooltip" title="' + id + '">\
-                  <img src="./img/avatars/1_HeadBack.png" class="audience-head" />\
-                  <img src="./img/avatars/1_BodyBack.png" class="audience-body" />\
-              </div>\
-              ')
+
+
+  var template = $('#avatarTmpl').html()
+  Mustache.parse(template)
+  var params = {userId: userId, label: id, avatar: 1, x: x, y: y, z: Math.floor(y)}
+  var rendered = Mustache.render(template, params)
+
+  $('#moshpit').append(rendered)
   $('#' + userId).tooltip()
 }
 
@@ -547,6 +560,8 @@ PeerTunes.prototype.playNextDJSong = function () {
         // start seeding file to guests
         this.seedFileWithKey(media.id, function (torrent) {
           media.infoHash = torrent.infoHash
+          self.song.infoHash = torrent.infoHash
+          //self.song.currentlyPlaying.
           self.broadcastToRoom({type: 'song', value: media, dj: self.username, startTime: now}, null)
         })
       }
@@ -560,6 +575,8 @@ PeerTunes.prototype.playNextDJSong = function () {
   }
   console.log('DJ queue empty')
   this.song.meta = {}
+  this.song.currentlyPlaying = null
+  this.song.infoHash = null
 }
 
 // TODO: move functionality otu of timeout so it can be called if song ends prematurely
@@ -567,7 +584,7 @@ PeerTunes.prototype.playNextDJSong = function () {
 //note: 'this' needs to be bound to PeerTunes
 PeerTunes.prototype.setSongTimeout = function () {
   var self = this
-	console.log('Self object: ', self)
+
   console.log('Player meta loaded, duration: ', self.song.meta.duration) // seconds
   //console.log('Song object: ', this.song)
   if (this.isHost) {
@@ -584,6 +601,7 @@ PeerTunes.prototype.setSongTimeout = function () {
       self.host.djQueue.shift()
       self.song.currentlyPlaying = {}
       self.song.meta = {}
+      self.song.infoHash = null
       self.playNextDJSong()
     }, this.song.meta.duration * 1000) // seconds -> milliseconds
   } else if (this.isDJ) {
@@ -704,6 +722,7 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
 
 PeerTunes.prototype.removeLastTorrent = function () {
 	if (this.currentTorrentID != null) {
+		console.log('Removing torrent: ', this.currentTorrentID)
 		this.torrentClient.remove(this.currentTorrentID)
 		this.currentTorrentID = null
 	}

@@ -58,10 +58,10 @@ function onPeer (peer) {
           }
 
           function onMessage (data) {
-            console.log('Received message: ' + data)
+            //console.log('Received message: ' + data)
             try {
               data = JSON.parse(data)
-              console.log(data)
+              console.log('Received message: ', data)
             } catch (err) {
               console.error(err.message)
             }
@@ -80,7 +80,7 @@ function onPeer (peer) {
                 case 'host-end':
                   console.log('Host closed room: ' + peer.username)
                   self.removeRoom(peer)
-                  // TODO: end song, clear chat
+                  self.resetRoom()
                   break
                 case 'join-room':
                   if (self.isHost) {
@@ -101,12 +101,11 @@ function onPeer (peer) {
                     peer.send(JSON.stringify({msg: 'new-user', value: self.username}))
 
                     // send current song info
-                    // TODO
                     if (self.song.currentlyPlaying != null) {
-                      //var timeSinceStart = PT.song.player.currentTime()
                       var song = self.song.currentlyPlaying
+                      if (self.song.infoHash != null) song.infoHash = self.song.infoHash
                       console.log('Sending new user song: ', song)
-                      var data = {type: 'song', value: song, dj: self.host.djQueue[0].username, time: self.song.startTime}
+                      var data = {type: 'song', value: song, dj: self.host.djQueue[0].username, startTime: self.song.startTime}
                       peer.send(JSON.stringify(data))
                     }
                   }
@@ -197,12 +196,15 @@ function onPeer (peer) {
                       }
 
                       var songInfo = {id: data.value.id, source: data.value.source}
-                      if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
+                      if (data.value.infoHash) {
+                      	songInfo.infoHash = data.value.infoHash
+                      	self.song.infoHash = data.value.infoHash
+                      }
 
                       self.song.play(songInfo, 0, self.setSongTimeout); // play in host's player
-                    	var now = Date.now()
+                      var now = Date.now()
       	  						self.song.startTime = now
-                      self.broadcastToRoom({type: 'song', value: songInfo, dj: peer.username, time: now}, null)
+                      self.broadcastToRoom({type: 'song', value: songInfo, dj: peer.username, startTime: now}, null)
                     }
                     break
                   default:
@@ -225,7 +227,7 @@ function onPeer (peer) {
                     if (data.dj === self.username) {
                       self.isDJ = true
                     }else {
-                      // only add infoHash if not the DJ
+                      // only add infoHash if not the DJ, since DJ already has file
                       if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
                     }
                   	var currentTime = Date.now() - data.startTime
@@ -249,6 +251,7 @@ function onPeer (peer) {
                         self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
                       })
                     }else {
+                    	//TODO: send song duration, since streaming doesn't support duration
                       self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
                     }
                     break
