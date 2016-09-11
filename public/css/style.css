@@ -1,3 +1,11 @@
+body {
+
+  background-image: url(http://i.imgur.com/tOEACrk.png);
+  background-repeat: no-repeat;
+  background-position: center top;
+
+}
+
 .sidebar{
   z-index: 150;
 }
