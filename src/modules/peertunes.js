@@ -33,11 +33,12 @@ function PeerTunes (config) {
   this.inQueue = false // if this peer is in DJ queue
   this.isDJ = false // this peer is the dj
   this.player = {video: null, audio: null, preview: null} // videojs player objects
-  this.host = { // room data
-    // TODO: make object literals instead of arrays? (faster)
+  this.host = { // room data used by host
     meta: {title: 'Untitled'},
     guests: [], // client connections
-    djQueue: [] // array of DJ's in queue
+    djQueue: [], // array of DJ's in queue
+    rating: 0, //total, updated on new vote or vote change
+    votes: [] //{peer, value}, keep track of past votes so total rating can be adjusted if guest changes vote
   }
 
   this.song = {
@@ -330,21 +331,24 @@ PeerTunes.prototype.initClickHandlers = function () {
     console.log('Clicked join/leave queue')
     if (!self.inQueue) {
       self.inQueue = true
+      $(this).removeClass('btn-primary').addClass('btn-info').text('Leave DJ Queue')
       if (self.isHost) {
         self.addDJToQueue(self.dummySelfPeer)
-      }else {
-        self.hostPeer.send(JSON.stringify({type: 'join-queue'}))
+        return
       }
-      $(this).removeClass('btn-primary').addClass('btn-info').text('Leave DJ Queue')
-    } else { // is already in queue
-      self.inQueue = false
-      $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
-      if (self.isHost) {
-        self.removeDJFromQueue(self.dummySelfPeer)
-      }else {
-        self.hostPeer.send(JSON.stringify({msg: 'leave-queue'}))
-      }
+      //is guest, so tell host guest joined
+      self.hostPeer.send(JSON.stringify({msg: 'join-queue'}))
+      return
     }
+    // was already in queue => wants to leave queue
+    self.inQueue = false
+    $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
+    if (self.isHost) {
+      self.removeDJFromQueue(self.dummySelfPeer)
+      return
+    }
+    //is guest, so tell host that guest is leaving
+    self.hostPeer.send(JSON.stringify({msg: 'leave-queue'}))
   })
 
   // rating buttons
@@ -358,7 +362,7 @@ PeerTunes.prototype.initClickHandlers = function () {
         self.rating++
         console.log('Rating: ' + self.rating)
         self.broadcast({msg: 'rate', value: {rating: self.rating, action: 1}}, null)
-      }else {
+      } else {
         self.hostPeer.send(JSON.stringify({msg: 'rate', value: 1}))
       }
       self.vote = 1
@@ -372,7 +376,7 @@ PeerTunes.prototype.initClickHandlers = function () {
         self.rating--
         console.log('Rating: ' + self.rating)
         self.broadcast({msg: 'rate', value: {rating: self.rating, action: -1}}, null)
-      }else {
+      } else {
         self.hostPeer.send(JSON.stringify({msg: 'rate', value: -1}))
       }
       self.vote = -1
@@ -500,9 +504,7 @@ PeerTunes.prototype.connectToHost = function (hostPeer) {
     if (!doDestroy) return
 
     this.stopHosting()
-    $('.audience-member').tooltip('destroy')
-    $('#moshpit').html('')
-    chat.clear()
+    this.resetRoom()
     $('#create-room').text('Create Room')
   }
 
@@ -542,6 +544,12 @@ PeerTunes.prototype.stopAllHeadBobbing = function () {
 PeerTunes.prototype.playNextDJSong = function () {
   var self = this
 
+  this.song.meta = {}
+  this.song.currentlyPlaying = null
+  this.song.infoHash = null
+  this.host.rating = 0
+  this.host.votes = []
+
   if (this.host.djQueue.length > 0) {
     // host is first in dj queue
     if (this.host.djQueue[0] === this.dummySelfPeer) {
@@ -574,12 +582,9 @@ PeerTunes.prototype.playNextDJSong = function () {
     return
   }
   console.log('DJ queue empty')
-  this.song.meta = {}
-  this.song.currentlyPlaying = null
-  this.song.infoHash = null
 }
 
-// TODO: move functionality otu of timeout so it can be called if song ends prematurely
+// TODO: move functionality out of timeout so it can be called if song ends prematurely
 // since videojs meta is only loaded once
 //note: 'this' needs to be bound to PeerTunes
 PeerTunes.prototype.setSongTimeout = function () {

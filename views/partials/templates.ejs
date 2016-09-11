@@ -1,0 +1,36 @@
+<script id="queueItemTmpl" type="x-tmpl-mustache">
+	<li class="list-group-item" data-source="{{ source }}" data-id="{{ id }}">
+		<span class="badge">{{ source }}</span>
+		{{ title }}
+	</li>
+</script>
+
+<script id="chatMessageTmpl" type="x-tmpl-mustache">
+	<div class="message">
+      	<div class="message-user"><h6>{{ id }}:</h6></div>
+      	<div class="message-text">{{ message }}</div>
+  	</div>
+</script>
+
+<script id="avatarTmpl" type="x-tmpl-mustache">
+	<div id="{{ userId }}"class="audience-member" style="left: {{ x }}%; top: {{ y }}%; z-index: {{ z }}" data-toggle="tooltip" title="{{ label }}">
+      <img src="./img/avatars/{{ avatar }}_HeadBack.png" class="audience-head" />
+      <img src="./img/avatars/{{ avatar }}_BodyBack.png" class="audience-body" />
+  </div>
+</script>
+
+<script id="roomRowTmpl" type="x-tmpl-mustache">
+	<li class="cursor-pointer">
+		<div class="row">
+			<div class="col-md-10">
+				<h5>{{ title }}</h5>
+				<span>Hosted by {{ id }}</span>
+			</div>
+			<div class="col-md-2">
+				<button id="join-room-{{ id }}" type="button" class="btn btn-default btn-join-room">Join Room</button>
+			</div>
+		</div>
+		
+	</li>
+
+</script>

@@ -1,8 +1,11 @@
 // Chat
 
+var Mustache = require('mustache')
+
 module.exports = (function () {
   var config = {
-    maxMessageLength: 300
+    maxMessageLength: 300,
+    template: '#chatMessageTmpl'
   }
   //private
   var chatBody, chatInput, chatEnterButton
@@ -60,18 +63,13 @@ module.exports = (function () {
   }
 
   function appendMsg(id, msg) {
-    // order important
     msg = filter(msg)
     console.log('chat: [' + id + ' : ' + msg + ']')
     var emojiMsg = emojify(msg)
 
-    // TODO: use template
-    chatBody.append(
-      '<div class="message">'
-      + '<div class="message-user"><h6>' + id + ':</h6></div>'
-      + '<div class="message-text">' + emojiMsg + '</div>'
-      + '</div>'
-    )
+    var template = $(config.template).html()
+    var params = {id: id, message: emojiMsg}
+    chatBody.append(Mustache.render(template, params))
 
     //return filtered message for convenience
     return msg
@@ -118,23 +116,7 @@ module.exports = (function () {
       onSubmitSuccess: function ( callback ) {
         onSubmitSuccess = callback
       },
-      appendMsg: function (id, msg) {
-        // order important
-        msg = filter(msg)
-        console.log('chat: [' + id + ' : ' + msg + ']')
-        var emojiMsg = emojify(msg)
-
-        // TODO: use template
-        chatBody.append(
-          '<div class="message">'
-          + '<div class="message-user"><h6>' + id + ':</h6></div>'
-          + '<div class="message-text">' + emojiMsg + '</div>'
-          + '</div>'
-        )
-
-        //return filtered message for convenience
-        return msg
-      },
+      appendMsg: appendMsg,
       submitMessage: submitMessage,
       clear: function () {
         chatBody.html('')

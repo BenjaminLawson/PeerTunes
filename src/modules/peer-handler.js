@@ -117,8 +117,8 @@ function onPeer (peer) {
                 case 'rate': // note: object format different if sent from guest->host vs. host->guests (additional value.rating property)
                   console.log('Received rating update: ', data.value)
 
-                  // TODO fix self
                   if (self.isHost) { // update rating & relay to other guests
+                  	//TODO: check if guest has already voted
                     self.rating = (data.value == 1) ? self.rating + 1 : self.rating - 1
                     console.log('Updated Rating: ' + self.rating)
                     self.broadcast({type: 'rate', value: {rating: self.rating, id: peer.username, action: data.value}}, peer)
@@ -137,6 +137,7 @@ function onPeer (peer) {
                       $('#user-' + data.value.id + ' .audience-head').removeClass('headbob-animation')
                     }
                   }
+
                   break
                 case 'leave-queue':
                   if (self.isHost) self.removeDJFromQueue(peer)
@@ -161,6 +162,19 @@ function onPeer (peer) {
                 case 'leave':
                   if (self.isHost) self.cleanupPeer(peer)
                   else self.removeAvatar(data.value)
+                  break
+                case 'join-queue':
+                	if (!self.isHost) break
+                  var isAlreadyInQueue = false
+                  for (var i = self.host.djQueue.length - 1; i >= 0; i--) {
+                    if (self.host.djQueue[i] == peer) {
+                      isAlreadyInQueue = true
+                      break // breaks from for loop only
+                    }
+                  }
+                  if (!isAlreadyInQueue) {
+                    self.addDJToQueue(peer)
+                  }
                   break
                 default:
                   console.log('unknown message: ' + data.msg)
