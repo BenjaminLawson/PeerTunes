@@ -8,7 +8,7 @@ module.exports = onPeer
 function onPeer (peer) {
 	var self = this
   // don't add duplicate peers
-  // won't work with multiple trackers
+  //TODO: won't work with multiple trackers
   if (this.peers.map(function (p) { return p.id }).indexOf(peer.id) > -1) return
 
   console.log('Tracker sent new peer: ' + peer.id)
@@ -58,7 +58,6 @@ function onPeer (peer) {
     }
 
     function onMessage (data) {
-      //console.log('Received message: ' + data)
       try {
         data = JSON.parse(data)
         console.log('Received message: ', data)
@@ -73,7 +72,7 @@ function onPeer (peer) {
       if (data.msg) {
         switch (data.msg) {
           case 'new-room':
-            // TODO: send username with new-room
+            //TODO: check if room already added
             console.log('Adding room ' + data.value)
             self.addRoom(peer, data.value)
             break
@@ -183,6 +182,26 @@ function onPeer (peer) {
               self.addDJToQueue(peer)
             }
             break
+          case 'queue-front':
+            // host asks for dj's song at front of queue
+            // implies this dj is at the front of the dj queue for now
+
+              // ignore if not from host
+              if (peer !== self.hostPeer) return
+
+              var queueFront = self.frontOfSongQueue()
+              if (queueFront.source === 'MP3') {
+                //TODO: send song duration, since streaming doesn't support duration
+                self.removeLastTorrent()
+                self.seedFileWithKey(queueFront.id, function (torrent) {
+                  self.currentTorrentID = torrent.infoHash
+                  queueFront.infoHash = torrent.infoHash
+                  self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
+                })
+              }else {
+                self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
+              }
+              break
           default:
             console.log('unknown message: ' + data.msg)
         }
@@ -191,18 +210,6 @@ function onPeer (peer) {
       if (data.type) {
         if (self.isHost) {
           switch (data.type) {
-            case 'join-queue':
-              var isAlreadyInQueue = false
-              for (var i = self.host.djQueue.length - 1; i >= 0; i--) {
-                if (self.host.djQueue[i] == peer) {
-                  isAlreadyInQueue = true
-                  break // breaks from for loop only
-                }
-              }
-              if (!isAlreadyInQueue) {
-                self.addDJToQueue(peer)
-              }
-              break
             case 'song':
               // request song answer from guest
               // verify dj is at front of queue
@@ -234,13 +241,9 @@ function onPeer (peer) {
         }else { // guest
           switch (data.type) {
             case 'song':
-              //TODO: fix dj queue button states
-              //move queue code to song end event
-              //since there might not be a next song
-
               console.log('Received song data')
+
               self.vote = 0
-              //self.stopAllHeadBobbing()
               self.rating = 0
 
               var songInfo = {id: data.value.id, source: data.value.source}
@@ -254,26 +257,6 @@ function onPeer (peer) {
             	var currentTime = Date.now() - data.startTime
             	console.log('Calculated current time = ', currentTime)
               self.song.play(songInfo, currentTime, self.setSongTimeout)
-              break
-            case 'queue-front':
-            // host asks for dj's song at front of queue
-            // implies self dj is at the front of the dj queue
-
-              // ignore if not from host
-              if (peer !== self.hostPeer) return
-
-              var queueFront = self.frontOfSongQueue()
-              if (queueFront.source === 'MP3') {
-                self.removeLastTorrent()
-                self.seedFileWithKey(queueFront.id, function (torrent) {
-                	self.currentTorrentID = torrent.infoHash
-                  queueFront.infoHash = torrent.infoHash
-                  self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
-                })
-              }else {
-              	//TODO: send song duration, since streaming doesn't support duration
-                self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
-              }
               break
             default:
               console.log('received unknown data type: ', data.type)

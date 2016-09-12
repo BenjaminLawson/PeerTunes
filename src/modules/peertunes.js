@@ -10,7 +10,7 @@ var YT = require('./YT')
 var chat = require('./chat')
 var onPeer = require('./peer-handler')
 
-// TODO: add slement selectors to config
+// TODO: add element selectors to config
 function PeerTunes (config) {
   var self = this
 
@@ -22,23 +22,31 @@ function PeerTunes (config) {
   this.currentTorrentID = null
 
   this.isHost = false // true = this peer is a host, false = this peer is a client
+
   this.peers = [] // peers in swarm
+
   this.peerId = new Buffer(hat(160), 'hex') // peer ID of this peer: new Buffer(hat(160), 'hex')
   this.dummySelfPeer = null
   this.username = hat(56)
+
   this.hostPeer = null // per object of room host
+
   this.rooms = [] // [{peer, title}]
+
   this.vote = 0 // vote for current video
   this.rating = 0 // overall song rating
+
   this.inQueue = false // if this peer is in DJ queue
   this.isDJ = false // this peer is the dj
+
   this.player = {video: null, audio: null, preview: null} // videojs player objects
+
   this.host = { // room data used by host
     meta: {title: 'Untitled'},
     guests: [], // client connections
     djQueue: [], // array of DJ's in queue
     rating: 0, //total, updated on new vote or vote change
-    votes: [] //{peer, value}, keep track of past votes so total rating can be adjusted if guest changes vote
+    votes: {} //{peer: value}, keep track of past votes so total rating can be adjusted if guest changes vote
   }
 
   this.song = {
@@ -46,7 +54,7 @@ function PeerTunes (config) {
     timeout: null,
     player: null,
     currentlyPlaying: null, // {id, source, infoHash}
-    startTime: null, // TODO: Date object of when song started playing, sent to guests instead of current time in song
+    startTime: null, // start time when song started playing, sent to guests instead of current time in song
     infoHash: null, //infohash of torrent if current song is MP3
     play: function (data, time, callback) { // time in milliseconds, callback on metadata available
     	callback = callback.bind(self)
@@ -75,7 +83,6 @@ function PeerTunes (config) {
           $('#vid2').addClass('hide')
           $('#vid1').removeClass('hide')
 
-          // TODO: do before song plays
           YT.getVideoMeta(id, function (meta) {
             console.log('Got YouTube video metadata: ', meta)
             self.song.meta = meta
@@ -95,7 +102,7 @@ function PeerTunes (config) {
           if (data.infoHash) {
             console.log('Song has infoHash, leeching')
             self.removeLastTorrent()
-            //TODO: callback not being called until download is complete, use different torrent event?
+            //TODO: callback not being called for long time if MP3 is long
             //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
             //once it starts, it is fast
             //instant when guest downloads from host
@@ -127,7 +134,7 @@ function PeerTunes (config) {
               self.song.player.src({ type: 'audio/mp3', src: url })
               self.song.player.currentTime(time / 1000) // milliseconds -> seconds
               self.song.player.play()
-              // PT.song.startTime = new Date()
+
               // TODO: only called first time- fix
               self.song.player.one('loadedmetadata', function () {
                 self.song.meta = {
@@ -136,7 +143,6 @@ function PeerTunes (config) {
                 if (callback) callback()
               })
             }).catch(function (err) {
-              // This code runs if there were any errors
               console.log('Error retrieving mp3: ', err)
             })
           }
@@ -147,7 +153,6 @@ function PeerTunes (config) {
       }
       self.rating = 0
       self.vote = 0
-      //self.stopAllHeadBobbing()
     },
     end: function () {
     	console.log('Ending song')
@@ -190,8 +195,6 @@ PeerTunes.prototype.init = function () {
       }
     }
   })
-
-  //console.log('Connecting to ws tracker: ' + this.config.trackerURL)
 
   var rtcConfig = {
     iceServers: [
@@ -295,6 +298,11 @@ PeerTunes.prototype.initClickHandlers = function () {
   var self = this // cache since 'this' is bound in click callbacks
 
   console.log('initializing click handlers')
+  $('#btn-login').click(function (e) {
+    $('#welcome').css('top', '100%');
+  })
+
+
   // queue
   $('#song-submit-button').click(function (e) {
     console.log('clicked submit song')
@@ -526,6 +534,8 @@ PeerTunes.prototype.connectToHost = function (hostPeer) {
   console.log('connecting to peer: ' + hostPeer.id)
 
   this.hostPeer = hostPeer
+
+  //TODO: race condition?
   hostPeer.send(JSON.stringify({username: this.username}))
   hostPeer.send(JSON.stringify({msg: 'join-room'}))
 }
@@ -601,7 +611,7 @@ PeerTunes.prototype.playNextDJSong = function () {
       else this.broadcastToRoom({type: 'song', value: media, dj: this.username, startTime: now}, null)
     }else { // host is not first in queue
       // ask front dj for song
-      this.host.djQueue[0].send(JSON.stringify({type: 'queue-front'}))
+      this.host.djQueue[0].send(JSON.stringify({msg: 'queue-front'}))
     }
 
     return
