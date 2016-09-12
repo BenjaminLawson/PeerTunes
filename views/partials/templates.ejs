@@ -8,7 +8,8 @@
 <script id="chatMessageTmpl" type="x-tmpl-mustache">
 	<div class="message">
       	<div class="message-user"><h6>{{ id }}:</h6></div>
-      	<div class="message-text">{{ message }}</div>
+      	<!-- triple mustache unescapes HTML so image tags can appear -->
+      	<div class="message-text">{{{ message }}}</div>
   	</div>
 </script>
 

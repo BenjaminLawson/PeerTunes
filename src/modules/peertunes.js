@@ -50,6 +50,14 @@ function PeerTunes (config) {
     infoHash: null, //infohash of torrent if current song is MP3
     play: function (data, time, callback) { // time in milliseconds, callback on metadata available
     	callback = callback.bind(self)
+
+      //call timeout if it wasn't called already
+      if (this.timeout != null) {
+        clearTimeout(this.timeout)
+        this.timeout = null
+        self.songTimeout()
+      }
+
       this.currentlyPlaying = data
       var id = data.id
       var source = data.source
@@ -139,12 +147,13 @@ function PeerTunes (config) {
       }
       self.rating = 0
       self.vote = 0
-      self.stopAllHeadBobbing()
+      //self.stopAllHeadBobbing()
     },
     end: function () {
     	console.log('Ending song')
       this.player.trigger('ended')
       this.player.pause()
+      self.stopAllHeadBobbing()
     }
   }
 }
@@ -366,8 +375,8 @@ PeerTunes.prototype.initClickHandlers = function () {
       $('#user-' + self.username + ' .audience-head').addClass('headbob-animation')
       if (self.isHost) {
         self.rating++
-        console.log('Rating: ' + self.rating)
-        self.broadcast({msg: 'rate', value: {rating: self.rating, action: 1}}, null)
+        //console.log('Rating: ' + self.rating)
+        self.broadcast({msg: 'rate', value: {rating: self.rating, id: self.username, action: 1}}, null)
       } else {
         self.hostPeer.send(JSON.stringify({msg: 'rate', value: 1}))
       }
@@ -381,7 +390,7 @@ PeerTunes.prototype.initClickHandlers = function () {
       if (self.isHost) {
         self.rating--
         console.log('Rating: ' + self.rating)
-        self.broadcast({msg: 'rate', value: {rating: self.rating, action: -1}}, null)
+        self.broadcast({msg: 'rate', value: {rating: self.rating, id: self.username, action: -1}}, null)
       } else {
         self.hostPeer.send(JSON.stringify({msg: 'rate', value: -1}))
       }
@@ -521,7 +530,8 @@ PeerTunes.prototype.connectToHost = function (hostPeer) {
   hostPeer.send(JSON.stringify({msg: 'join-room'}))
 }
 
-PeerTunes.prototype.addAvatar = function (id) {
+PeerTunes.prototype.addAvatar = function (id, headbob) {
+  console.log('Adding avatar for ', id, ' with headbob ', (headbob === true))
   var x = Math.random() * 80 + 10
   var y = Math.random() * 100 + 5
   var userId = 'user-' + id
@@ -532,7 +542,9 @@ PeerTunes.prototype.addAvatar = function (id) {
   var params = {userId: userId, label: id, avatar: 1, x: x, y: y, z: Math.floor(y)}
   var rendered = Mustache.render(template, params)
 
-  $('#moshpit').append(rendered)
+  var avatar = $(rendered)
+  if (headbob === true) avatar.find('.audience-head').addClass('headbob-animation')
+  $('#moshpit').append(avatar)
   $('#' + userId).tooltip()
 }
 
@@ -543,6 +555,7 @@ PeerTunes.prototype.removeAvatar = function (id) {
 }
 
 PeerTunes.prototype.stopAllHeadBobbing = function () {
+  console.log('Stopping all head bobbing')
   $('.audience-head').removeClass('headbob-animation')
 }
 
@@ -555,6 +568,12 @@ PeerTunes.prototype.playNextDJSong = function () {
   this.song.infoHash = null
   this.host.rating = 0
   this.host.votes = []
+  this.vote = 0
+  //reset all likes
+  this.host.guests.map(function (guest) {
+    guest.like = false
+    return guest
+  })
 
   if (this.host.djQueue.length > 0) {
     // host is first in dj queue
@@ -590,41 +609,54 @@ PeerTunes.prototype.playNextDJSong = function () {
   console.log('DJ queue empty')
 }
 
-// TODO: move functionality out of timeout so it can be called if song ends prematurely
-// since videojs meta is only loaded once
 //note: 'this' needs to be bound to PeerTunes
 PeerTunes.prototype.setSongTimeout = function () {
   var self = this
 
   console.log('Player meta loaded, duration: ', self.song.meta.duration) // seconds
-  //console.log('Song object: ', this.song)
+
+  //TODO: timeout is wrong if user joined partway through song
+  //calculate: duration - current time
+
+  var durationInMilliseconds = this.song.meta.duration * 1000 // seconds -> milliseconds
+  this.song.timeout = setTimeout(function () {
+      self.songTimeout()
+  }, durationInMilliseconds) 
+}
+
+PeerTunes.prototype.songTimeout = function () {
+  var self = this
+
   if (this.isHost) {
-    this.song.timeout = setTimeout(function () {
-      console.log('song ended')
+      console.log('song ended timeout')
+      this.song.timeout = null
 
-      if (self.host.djQueue[0] === self.dummySelfPeer) {
-        self.cycleMyQueue()
-        self.isDJ = false
-        self.inQueue = false
-        $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
-      }
+      //host is current DJ
+      if (this.host.djQueue[0] === this.dummySelfPeer) endDJ()
 
-      self.host.djQueue.shift()
-      self.song.currentlyPlaying = {}
-      self.song.meta = {}
-      self.song.infoHash = null
-      self.playNextDJSong()
-    }, this.song.meta.duration * 1000) // seconds -> milliseconds
+      this.host.djQueue.shift()
+      this.song.currentlyPlaying = {}
+      this.song.meta = {}
+      this.song.infoHash = null
+      this.playNextDJSong()
+      this.stopAllHeadBobbing()
   } else if (this.isDJ) {
-    // TODO: use videojs end event for guests
-    this.song.timeout = setTimeout(function () {
-      console.log('song ended')
-      self.isDJ = false
-      self.inQueue = false
-      $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
+    console.log('song ended timeout')
+    this.song.timeout = null
+    endDJ()
+    this.stopAllHeadBobbing()
+  } else {
+    console.log('song ended timeout')
+    this.song.timeout = null
 
-      self.host.djQueue.shift()
-    }, this.song.meta.duration * 1000) // seconds -> milliseconds
+    this.stopAllHeadBobbing()
+  }
+
+  function endDJ () {
+    self.cycleMyQueue()
+    self.isDJ = false
+    self.inQueue = false
+    $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
   }
 }
 

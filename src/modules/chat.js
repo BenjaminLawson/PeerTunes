@@ -12,6 +12,7 @@ module.exports = (function () {
   var onSubmitSuccess
   var nickname
 
+  //TODO: fix img tag being in quotes- Mustache's doing?
   function emojify ( msg ) {
     // replace common ascii emoticons with shortnames
     msg = msg.replace(/:\)/g, ':smile:')
@@ -55,7 +56,7 @@ module.exports = (function () {
 
     if (text.trim().length > 0) {
       if (onSubmitSuccess) onSubmitSuccess(text)
-      //TODO: username not accessible
+
       appendMsg(nickname, text)
       clearInput()
       scrollToBottom()
