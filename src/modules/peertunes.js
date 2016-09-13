@@ -27,7 +27,8 @@ function PeerTunes (config) {
 
   this.peerId = new Buffer(hat(160), 'hex') // peer ID of this peer: new Buffer(hat(160), 'hex')
   this.dummySelfPeer = null
-  this.username = hat(56)
+  //this.username = hat(56)
+  this.username = config.username
 
   this.hostPeer = null // per object of room host
 
@@ -155,9 +156,11 @@ function PeerTunes (config) {
       self.vote = 0
     },
     end: function () {
-    	console.log('Ending song')
-      this.player.trigger('ended')
-      this.player.pause()
+    	//console.log('Ending song')
+      if (this.player != null) {
+        this.player.trigger('ended')
+        this.player.pause()
+      }
       self.stopAllHeadBobbing()
     }
   }
@@ -298,9 +301,6 @@ PeerTunes.prototype.initClickHandlers = function () {
   var self = this // cache since 'this' is bound in click callbacks
 
   console.log('initializing click handlers')
-  $('#btn-login').click(function (e) {
-    $('#welcome').css('top', '100%');
-  })
 
 
   // queue
@@ -489,6 +489,7 @@ PeerTunes.prototype.resetRoom = function () {
   $('#moshpit').html('')
   chat.clear()
   this.song.end()
+  $('#btn-leave-room').hide()
 }
 
 PeerTunes.prototype.refreshRoomListing = function () {
@@ -510,7 +511,6 @@ PeerTunes.prototype.refreshRoomListing = function () {
       $('#roomModal').modal('toggle')
       console.log('Joining room: ' + id)
       self.connectToHost(room.peer)
-      $('#btn-leave-room').show()
     })
     $ul.append($row)
   })
@@ -535,9 +535,11 @@ PeerTunes.prototype.connectToHost = function (hostPeer) {
 
   this.hostPeer = hostPeer
 
-  //TODO: race condition?
+  //TODO: fix race condition?
   hostPeer.send(JSON.stringify({username: this.username}))
   hostPeer.send(JSON.stringify({msg: 'join-room'}))
+
+  $('#btn-leave-room').show()
 }
 
 PeerTunes.prototype.addAvatar = function (id, headbob) {
@@ -565,7 +567,7 @@ PeerTunes.prototype.removeAvatar = function (id) {
 }
 
 PeerTunes.prototype.stopAllHeadBobbing = function () {
-  console.log('Stopping all head bobbing')
+  //console.log('Stopping all head bobbing')
   $('.audience-head').removeClass('headbob-animation')
 }
 
@@ -605,10 +607,10 @@ PeerTunes.prototype.playNextDJSong = function () {
           media.infoHash = torrent.infoHash
           self.song.infoHash = torrent.infoHash
           //self.song.currentlyPlaying.
-          self.broadcastToRoom({type: 'song', value: media, dj: self.username, startTime: now}, null)
+          self.broadcastToRoom({msg: 'song', value: media, dj: self.username, startTime: now}, null)
         })
       }
-      else this.broadcastToRoom({type: 'song', value: media, dj: this.username, startTime: now}, null)
+      else this.broadcastToRoom({msg: 'song', value: media, dj: this.username, startTime: now}, null)
     }else { // host is not first in queue
       // ask front dj for song
       this.host.djQueue[0].send(JSON.stringify({msg: 'queue-front'}))

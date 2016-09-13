@@ -107,7 +107,7 @@ function onPeer (peer) {
                 var song = self.song.currentlyPlaying
                 if (self.song.infoHash != null) song.infoHash = self.song.infoHash
                 console.log('Sending new user song: ', song)
-                var data = {type: 'song', value: song, dj: self.host.djQueue[0].username, startTime: self.song.startTime}
+                var data = {msg: 'song', value: song, dj: self.host.djQueue[0].username, startTime: self.song.startTime}
                 peer.send(JSON.stringify(data))
               }
             }
@@ -196,51 +196,40 @@ function onPeer (peer) {
                 self.seedFileWithKey(queueFront.id, function (torrent) {
                   self.currentTorrentID = torrent.infoHash
                   queueFront.infoHash = torrent.infoHash
-                  self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
+                  self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront}))
                 })
               }else {
-                self.hostPeer.send(JSON.stringify({type: 'song', value: queueFront}))
+                self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront}))
               }
               break
-          default:
-            console.log('unknown message: ' + data.msg)
-        }
-      }
-      // deprecated
-      if (data.type) {
-        if (self.isHost) {
-          switch (data.type) {
             case 'song':
-              // request song answer from guest
-              // verify dj is at front of queue
-              // TODO: prevent front dj from repeatedly submitting songs
-              if (peer === self.host.djQueue[0]) {
-                // don't start playing video until callback
+              if (self.isHost) {
+                // request song answer from guest
+                // verify dj is at front of queue
+                // TODO: prevent front dj from repeatedly submitting songs
+                if (peer === self.host.djQueue[0]) {
+                  // don't start playing video until callback
 
-                if (data.value.source === 'YOUTUBE') {
-                  YT.getVideoMeta(data.value.id, function (meta) {
-                    self.song.meta = meta
-                  })
+                  if (data.value.source === 'YOUTUBE') {
+                    YT.getVideoMeta(data.value.id, function (meta) {
+                      self.song.meta = meta
+                    })
+                  }
+
+                  var songInfo = {id: data.value.id, source: data.value.source}
+                  if (data.value.infoHash) {
+                    songInfo.infoHash = data.value.infoHash
+                    self.song.infoHash = data.value.infoHash
+                  }
+
+                  self.song.play(songInfo, 0, self.setSongTimeout); // play in host's player
+                  var now = Date.now()
+                  self.song.startTime = now
+                  self.broadcastToRoom({msg: 'song', value: songInfo, dj: peer.username, startTime: now}, null)
                 }
-
-                var songInfo = {id: data.value.id, source: data.value.source}
-                if (data.value.infoHash) {
-                	songInfo.infoHash = data.value.infoHash
-                	self.song.infoHash = data.value.infoHash
-                }
-
-                self.song.play(songInfo, 0, self.setSongTimeout); // play in host's player
-                var now = Date.now()
-	  						self.song.startTime = now
-                self.broadcastToRoom({type: 'song', value: songInfo, dj: peer.username, startTime: now}, null)
+                break
               }
-              break
-            default:
-              console.log('Received data of unkown type: ', data.type)
-          }
-        }else { // guest
-          switch (data.type) {
-            case 'song':
+              //is guest
               console.log('Received song data')
 
               self.vote = 0
@@ -254,14 +243,12 @@ function onPeer (peer) {
                 // only add infoHash if not the DJ, since DJ already has file
                 if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
               }
-            	var currentTime = Date.now() - data.startTime
-            	console.log('Calculated current time = ', currentTime)
+              var currentTime = Date.now() - data.startTime
+              console.log('Calculated current time = ', currentTime)
               self.song.play(songInfo, currentTime, self.setSongTimeout)
               break
-            default:
-              console.log('received unknown data type: ', data.type)
-
-          }
+          default:
+            console.log('unknown message: ' + data.msg)
         }
       }
     }

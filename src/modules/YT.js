@@ -1,4 +1,5 @@
 // YouTube
+//TODO: use google api library
 
 module.exports = (function () {
   //private
@@ -31,6 +32,10 @@ module.exports = (function () {
         meta.duration = moment.duration(ISODuration).asSeconds()
         callback(meta)
       })
+    },
+    //TODO
+    getSearchResults: function (search) {
+      var apiQuery = 'https://www.googleapis.com/youtube/v3/search'
     }
   }
 }())

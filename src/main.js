@@ -39,11 +39,18 @@ TODO: dj queue view
 
 var PeerTunes = require('./modules/peertunes')
 
-var PT = new PeerTunes({
-  maxRoomSize: 50, // arbitrary until further testing
-  trackerURL: 'wss://tracker.webtorrent.io'
-})
+var config = {
+	maxRoomSize: 50, // arbitrary until further testing
+  trackerURL: 'wss://tracker.webtorrent.io',
+  username: 'Undefined' //set by welcome view's username input
+}
 
 $(document).ready(function () {
-	PT.init()
+	$('#btn-login').click(function (e) {
+			config.username = $('#input-username').val()
+    	var PT = new PeerTunes(config)
+			PT.init()
+
+    	$('#welcome').css('top', '100%')
+  	})
 })
