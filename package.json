@@ -14,6 +14,7 @@
     "ejs": "^2.4.2",
     "express": "^4.13.4",
     "hat": "0.0.3",
+    "jsmediatags": "^3.3.0",
     "localforage": "^1.4.2",
     "mustache": "^2.2.1",
     "simple-peer": "^6.0.7",

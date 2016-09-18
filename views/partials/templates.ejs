@@ -1,16 +1,16 @@
 <script id="queueItemTmpl" type="x-tmpl-mustache">
-	<li class="list-group-item" data-source="{{ source }}" data-id="{{ id }}">
+	<li class="list-group-item" data-source="{{ source }}" data-id="{{ id }}" data-title="{{ title }}">
 		<span class="badge">{{ source }}</span>
 		{{ title }}
 	</li>
 </script>
 
 <script id="chatMessageTmpl" type="x-tmpl-mustache">
-	<div class="message">
-      	<div class="message-user"><h6>{{ id }}:</h6></div>
-      	<!-- triple mustache unescapes HTML so image tags can appear -->
-      	<div class="message-text">{{{ message }}}</div>
-  	</div>
+  	<li class="message list-group-item">
+		<h6 class="message-user">{{ id }}:</h6>
+		<!-- triple mustache unescapes HTML so image tags can appear -->
+		<span class="message-text">{{{ message }}}</span>
+	</li>
 </script>
 
 <script id="avatarTmpl" type="x-tmpl-mustache">

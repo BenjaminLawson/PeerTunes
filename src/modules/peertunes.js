@@ -5,6 +5,7 @@ var Mustache = require('mustache')
 var WebTorrent = require('webtorrent')
 var localforage = require('localforage')
 var dragDrop = require('drag-drop')
+var mediaTags = require('jsmediatags')
 
 var YT = require('./YT')
 var chat = require('./chat')
@@ -73,6 +74,10 @@ function PeerTunes (config) {
       console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
       console.log('play data: ', data)
 
+      if (data.title) {
+        self.setPlayerTitle(data.title)
+      }
+
       switch (source) {
         case 'YOUTUBE':
           this.player = self.player.video
@@ -104,6 +109,7 @@ function PeerTunes (config) {
           if (data.infoHash) {
             console.log('Song has infoHash, leeching')
             self.removeLastTorrent()
+            //TODO: get cover from mp3, might need mp3 owner to seed seperately
             //TODO: callback not being called for long time if MP3 is long
             //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
             //once it starts, it is fast
@@ -117,12 +123,28 @@ function PeerTunes (config) {
               this.player.play()
             // PT.song.startTime = new Date()
             }.bind(this)) //song object context
+            /*
             tr.on('download', function (bytes) {
 						  console.log('just downloaded: ' + bytes)
 						  console.log('total downloaded: ' + tr.downloaded);
 						  console.log('download speed: ' + tr.downloadSpeed)
 						  console.log('progress: ' + tr.progress)
 						})
+            */
+            //add cover to player as soon as download is done
+            tr.on('done', function(){
+              console.log('torrent finished downloading');
+              var file = tr.files[0].getBlob(function (error, blob) {
+                if (error) {
+                  console.log(error)
+                  return
+                }
+                console.log(blob)
+                self.tagsFromFile(blob, function (tags) {
+                  self.setPlayerCover(tags.cover)
+                })
+              })
+            })
           } else { // mp3 should be in localStorage
             console.log('Song does not have infoHash, getting from localstorage')
             localforage.getItem(id).then(function (value) {
@@ -130,12 +152,19 @@ function PeerTunes (config) {
               // from the offline store.
               // TODO: get id3 data from mp3 file
               var file = new File([value], id, {type: 'audio/mp3', lastModified: Date.now()})
+
               var url = window.URL.createObjectURL(file)
               console.log('file: ', file)
               console.log('file url: ', url)
               self.song.player.src({ type: 'audio/mp3', src: url })
               self.song.player.currentTime(time / 1000) // milliseconds -> seconds
               self.song.player.play()
+
+              self.tagsFromFile(file, function (tags) {
+                self.setPlayerTitle(tags.combinedTitle)
+                self.setPlayerCover(tags.cover)
+              })
+
 
               // TODO: only called first time- fix
               self.song.player.one('loadedmetadata', function () {
@@ -183,7 +212,7 @@ PeerTunes.prototype.init = function () {
   this.dummySelfPeer = {username: this.username, id: this.peerId}
 
   // assign chat selectors
-  chat.setBody('#chat .panel-body')
+  chat.setBody('#chat-list')
   chat.setInput('#chat-text')
   chat.setEnterButton('#chat-enter')
   chat.init()
@@ -260,15 +289,18 @@ PeerTunes.prototype.init = function () {
     // console.log('Here are the dropped files', files)
     var file = files[0]
     var key = file.name
-    // var fileURL = window.URL.createObjectURL(file)
-    // console.log('url before: ', fileURL)
-    var blob = new Blob([file])
-    // TODO: get title of mp3?
+
+
+    console.log('Reading tags')
+    self.tagsFromFile(file, function(tags) {
+      self.addSongToQueue({title: tags.combinedTitle, source: 'MP3', id: key})
+    })
+
     // store files in localstorage so they can be seeded in future
-    //TODO: add loading bar while song saved to localstorage
-    self.addSongToQueue({title: key, source: 'MP3', id: key})
+    //TODO: add loading indicator while song saved to localstorage
+    var blob = new Blob([file])
     localforage.setItem(key, blob).then(function () {
-      //self.addSongToQueue({title: key, source: 'MP3', id: key})
+
       console.log('Done saving file to localstorage')
       return localforage.getItem(key)
     }).then(function (value) {
@@ -705,17 +737,27 @@ PeerTunes.prototype.songTimeout = function () {
   }
 }
 
-PeerTunes.prototype.updateProgress = function(decimal) {
+PeerTunes.prototype.updateProgress = function (decimal) {
   var percent = decimal*100 + '%'
   $('#song-progress-bar').css('width',percent)
 }
 
-PeerTunes.prototype.setPlayerTitle = function(title) {
-  var maxLength = 40
+PeerTunes.prototype.setPlayerTitle = function (title) {
+  var maxLength = 55
   if (title.length > maxLength) {
     title = title.substring(0, maxLength) + '...'
   }
   $('#song-title').text(title)
+}
+
+// cover must be URL, can be blob url
+PeerTunes.prototype.setPlayerCover = function (cover) {
+  if (this.song.player != null) {
+    $('#vid2 .vjs-poster').css('background-image','url('+cover+')')
+    this.song.player.posterImage.show()
+  }
+
+
 }
 
 // HOST function
@@ -765,7 +807,7 @@ PeerTunes.prototype.frontOfSongQueue = function () {
   var queueSize = $('#my-queue-list li').length
   if (queueSize > 0) {
     var $top = $('#my-queue-list li').first()
-    var song = {id: $top.data('id'), source: $top.data('source')}
+    var song = {id: $top.data('id'), source: $top.data('source'), title: $top.data('title')}
     console.log('frontOfSongQueue: ', song)
     return song
   }
@@ -827,6 +869,42 @@ PeerTunes.prototype.removeLastTorrent = function () {
 		this.torrentClient.remove(this.currentTorrentID)
 		this.currentTorrentID = null
 	}
+}
+
+PeerTunes.prototype.tagsFromFile = function (file, callback) {
+  mediaTags.read(file, {
+      onSuccess: function(tag) {
+        tag = tag.tags
+        console.log(tag)
+
+        //https://github.com/aadsm/jsmediatags/issues/13
+        if (tag.picture) {
+            var base64String = ''
+            for (var i = 0; i < tag.picture.data.length; i++) {
+                base64String += String.fromCharCode(tag.picture.data[i])
+            }
+            var base64 = 'data:image/jpeg;base64,' + window.btoa(base64String)
+            tag.picture = base64
+          } else {
+            //TODO: use placeholder image
+            tag.picture = null
+          }
+
+
+        var meta = {
+          artist: tag.artist,
+          title: tag.title,
+          cover: tag.picture,
+
+          combinedTitle: tag.title + ' - ' + tag.artist //Here Comes the Sun - The Beatles
+        }
+
+        callback(meta)
+      },
+      onError: function(error) {
+        console.log('Error reading MP3 tags: ', error)
+      }
+    })
 }
 
 module.exports = PeerTunes

@@ -39,7 +39,7 @@ module.exports = (function () {
   function isScrolledToBottom () {
     return (chatBody.scrollHeight - chatBody.offsetHeight - chatBody.scrollTop < 1)
   }
-
+  //TODO: fix this
   function scrollToBottom() {
     var height = chatBody.scrollHeight
     chatBody.scrollTop(height)

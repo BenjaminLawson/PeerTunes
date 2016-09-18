@@ -20,6 +20,7 @@ body {
 	background-color: black;
 
 	margin-bottom: 5px;
+  pointer-events: none;
 }
 
 #vid2 {
@@ -38,6 +39,10 @@ body {
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+.no-padding {
+  padding: 0px;
 }
 
 .vertical-align {
@@ -111,11 +116,11 @@ body {
 /* Bottom Bar */
 #bottom-bar {
   position: absolute;
-  z-index: 100;
+  z-index: 200;
   bottom: 0px;
   height: 46px;
   width: 100%;
-  background-color: rgba(0,0,0,0.7);
+  background-color: rgba(0,0,0,0.8);
 }
 
 #song-title {
@@ -136,20 +141,15 @@ body {
 #bottom-bar-volume {
   position: absolute;
   font-size: 26px;
-  left: 75%;
+  left: 77%;
   top: 12px;
 }
 
 /* My Queue */
 #my-queue .panel-body{
-	padding: 0;
 	min-height: 390px;
   overflow-y: scroll;
 }
-#my-queue-list{
-	padding-left: 0px;
-}
-
 
 /* Headbob CSS3 animation */
 .headbob-animation{

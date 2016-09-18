@@ -210,17 +210,28 @@ function onPeer (peer) {
                 if (peer === self.host.djQueue[0]) {
                   // don't start playing video until callback
 
-                  if (data.value.source === 'YOUTUBE') {
-                    YT.getVideoMeta(data.value.id, function (meta) {
-                      self.song.meta = meta
-                    })
-                  }
-
                   var songInfo = {id: data.value.id, source: data.value.source}
                   if (data.value.infoHash) {
                     songInfo.infoHash = data.value.infoHash
                     self.song.infoHash = data.value.infoHash
                   }
+
+                  if (data.value.source === 'YOUTUBE') {
+                    YT.getVideoMeta(data.value.id, function (meta) {
+                      self.song.meta = meta
+                    })
+                  }
+                  switch (data.value.source) {
+                    case 'YOUTUBE':
+                      YT.getVideoMeta(data.value.id, function (meta) {
+                        self.song.meta = meta
+                      })
+                      break
+                    case 'MP3':
+                      songInfo.title = data.value.title
+                      break
+                  }
+
 
                   self.song.play(songInfo, 0, self.setSongTimeout); // play in host's player
                   var now = Date.now()
@@ -236,6 +247,10 @@ function onPeer (peer) {
               self.rating = 0
 
               var songInfo = {id: data.value.id, source: data.value.source}
+
+              if (data.value.source === 'MP3') {
+                songInfo.title = data.value.title
+              }
 
               if (data.dj === self.username) {
                 self.isDJ = true
