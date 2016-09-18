@@ -155,15 +155,24 @@ function onPeer (peer) {
             self.song.end()
             break
           case 'chat':
+            // verify that message actually came from room host
+            if (!self.isHost && peer !== self.hostPeer) return
+            //TODO: verify message came from guest
+
             var wasAtBottom = self.chat.isScrolledToBottom()
             if (self.isHost) {
               data.text = self.chat.filter(data.text)
               self.broadcastToRoom({msg: 'chat', value: {id: peer.username, text: data.text}}, peer)
               self.chat.appendMsg(peer.username, data.text)
+              self.avatarChatPopover(peer.username, self.chat.emojify(data.text))
             }else {
-              self.chat.appendMsg(data.value.id, data.value.text)
+              var username = data.value.id
+              if (peer === self.hostPeer) username += ' [Host]'
+              self.chat.appendMsg(username, data.value.text)
+              self.avatarChatPopover(data.value.id, self.chat.emojify(data.value.text))
             }
-            if (wasAtBottom) self.chat.scrollToBottom()
+            //self.avatarChatPopover(data.value.id, self.chat.emojify(data.value.text))
+            if (wasAtBottom) self.chat.scrollToBottom() //TODO: fix
             break
           case 'leave':
             if (self.isHost) self.cleanupPeer(peer)

@@ -186,12 +186,12 @@ function PeerTunes (config) {
       self.vote = 0
     },
     end: function () {
-    	//console.log('Ending song')
       if (this.player != null) {
         this.player.trigger('ended')
         this.player.pause()
       }
       self.stopAllHeadBobbing()
+      self.setPlayerTitle('')
     }
   }
 }
@@ -221,7 +221,7 @@ PeerTunes.prototype.init = function () {
 
   chat.onSubmitSuccess(function (text) {
     if (self.isHost) {
-      self.broadcastToRoom({msg: 'chat', value: {id: self.username + ' [Host]', text: text}})
+      self.broadcastToRoom({msg: 'chat', value: {id: self.username, text: text}})
     } else {
       if (self.hostPeer != null) {
         self.hostPeer.send(JSON.stringify({msg: 'chat', text: text}))
@@ -704,30 +704,23 @@ PeerTunes.prototype.setSongTimeout = function () {
 PeerTunes.prototype.songTimeout = function () {
   var self = this
 
+  console.log('song ended timeout')
+
   if (this.isHost) {
-      console.log('song ended timeout')
-      this.song.timeout = null
+    //host is current DJ
+    if (this.host.djQueue[0] === this.dummySelfPeer) endDJ()
 
-      //host is current DJ
-      if (this.host.djQueue[0] === this.dummySelfPeer) endDJ()
-
-      this.host.djQueue.shift()
-      this.song.currentlyPlaying = {}
-      this.song.meta = {}
-      this.song.infoHash = null
-      this.playNextDJSong()
-      this.stopAllHeadBobbing()
+    this.host.djQueue.shift()
+    this.song.currentlyPlaying = {}
+    this.song.meta = {}
+    this.song.infoHash = null
+    this.playNextDJSong()
   } else if (this.isDJ) {
-    console.log('song ended timeout')
-    this.song.timeout = null
     endDJ()
-    this.stopAllHeadBobbing()
-  } else {
-    console.log('song ended timeout')
-    this.song.timeout = null
-
-    this.stopAllHeadBobbing()
   }
+
+  this.song.timeout = null
+  this.stopAllHeadBobbing()
 
   function endDJ () {
     self.cycleMyQueue()
@@ -905,6 +898,31 @@ PeerTunes.prototype.tagsFromFile = function (file, callback) {
         console.log('Error reading MP3 tags: ', error)
       }
     })
+}
+
+//TODO: show popover for self messages (refactor chat)
+PeerTunes.prototype.avatarChatPopover = function (id, content) {
+  content = '<div class="text-center">'+content+'</div>'
+
+  console.log('avatar chat popover ', id, ': ', content)
+  $user = $('#user-'+id+' .audience-head')
+  var options = {
+    title: '', 
+    placement: 'top', 
+    content: content, 
+    trigger:'manual', 
+    width: 190, 
+    animation: 'pop', 
+    multi: true
+  }
+  $user.webuiPopover(options)
+
+  $user.webuiPopover('show')
+  setTimeout(function () {
+    $user.webuiPopover('hide')
+    $user.webuiPopover('destroy')
+  },2600)
+
 }
 
 module.exports = PeerTunes

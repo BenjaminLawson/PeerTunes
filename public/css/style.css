@@ -33,7 +33,7 @@ body {
 }
 
 #chat .panel-body {
-	height: 70%;
+	height: 400px;
 	overflow-y: scroll;
 }
 
@@ -115,7 +115,7 @@ body {
 
 /* Bottom Bar */
 #bottom-bar {
-  position: absolute;
+  position: fixed;
   z-index: 200;
   bottom: 0px;
   height: 46px;

@@ -125,6 +125,7 @@ module.exports = (function () {
       clearInput: clearInput,
       scrollToBottom: scrollToBottom,
       filter: filter,
-      isScrolledToBottom: isScrolledToBottom
+      isScrolledToBottom: isScrolledToBottom,
+      emojify: emojify
     }
 }())
