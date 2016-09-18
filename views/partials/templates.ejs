@@ -14,7 +14,7 @@
 </script>
 
 <script id="avatarTmpl" type="x-tmpl-mustache">
-	<div id="{{ userId }}"class="audience-member" style="left: {{ x }}%; top: {{ y }}%; z-index: {{ z }}" data-toggle="tooltip" title="{{ label }}">
+	<div id="{{ userId }}"class="audience-member" style="left: {{ x }}%; top: {{ y }}%; z-index: {{ z }}">
       <img src="./img/avatars/{{ avatar }}_HeadBack.png" class="audience-head" />
       <img src="./img/avatars/{{ avatar }}_BodyBack.png" class="audience-body" />
   </div>
@@ -34,4 +34,14 @@
 		
 	</li>
 
+</script>
+
+<script id="popoverTmpl" type="x-tmpl-mustache">
+	<ul class="dropdown-menu">
+		<li><h6 class="text-center">{{ id }}</h6></li>
+		{{#menu}}
+	    <li role="separator" class="divider"></li>
+	    <li class="text-center"><a href="#">Friend Request</a></li>
+	    {{/menu}}
+  	</ul>
 </script>

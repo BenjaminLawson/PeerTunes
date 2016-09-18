@@ -76,12 +76,6 @@ body {
 	width:95%;
 	height:300px;
 }
-#moshpit .tooltip > .tooltip-inner {
-  background-color: #424242;
-}
-#moshpit .tooltip > .tooltip-arrow {
-  border-top-color: #424242;
-}
 
 /* audience members */
 .audience-member{
@@ -98,28 +92,63 @@ body {
     left: 23px;
 }
 
+/* Popovers */
+.webui-popover {
+  background-color: #222222;
+}
+
+.webui-arrow:after {
+  border-top-color: #222222 !important;
+}
+
+/* Sidebars */
+#sidebar-left {
+  width: 300px;
+  position: absolute;
+  left: 10px;
+}
+
+/* Bottom Bar */
+#bottom-bar {
+  position: absolute;
+  z-index: 100;
+  bottom: 0px;
+  height: 46px;
+  width: 100%;
+  background-color: rgba(0,0,0,0.7);
+}
+
+#song-title {
+  position: absolute;
+  top: 0px;
+  left: 2%;
+}
+
+#song-progress {
+  width: 72%;
+  position: relative;
+  top: 32px;
+  left: 2%;
+  height: 8px;
+  margin-bottom: 0px;
+}
+
+#bottom-bar-volume {
+  position: absolute;
+  font-size: 26px;
+  left: 75%;
+  top: 12px;
+}
+
 /* My Queue */
 #my-queue .panel-body{
 	padding: 0;
-	height: 340px;
+	min-height: 390px;
   overflow-y: scroll;
 }
 #my-queue-list{
 	padding-left: 0px;
 }
-
-/* Video Player */
-.video-js.vjs-default-skin .vjs-big-play-button, 
-.vjs-icon-pause, .video-js .vjs-play-control,
-.vjs-poster,
-.vjs-fullscreen-control
-{
-  display: none !important; 
-}
-.vjs-progress-control{
-  pointer-events: none;
-}
-
 
 
 /* Headbob CSS3 animation */

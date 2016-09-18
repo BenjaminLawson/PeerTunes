@@ -88,6 +88,7 @@ function PeerTunes (config) {
             console.log('Got YouTube video metadata: ', meta)
             self.song.meta = meta
             console.log(self.song)
+            self.setPlayerTitle(meta.title)
             if (callback) callback()
           })
           break
@@ -236,14 +237,21 @@ PeerTunes.prototype.init = function () {
 
   // video listeners
   var players = [this.player.video, this.player.audio]
+  this.song.player = this.player.video //arbitrary, used so volume can be changed
   players.forEach(function (player) {
     player.ready(function () {
       // automatically hide/show player when song is playing
       player.on('ended', function () {
         $('#video-frame').hide()
+        player.off('timeupdate')
+        //self.updateProgress(0)
       })
       player.on('play', function () {
         $('#video-frame').show()
+
+        player.on('timeupdate', function () {
+          self.updateProgress(this.currentTime()/this.duration())
+        })
       })
     })
   })
@@ -302,6 +310,21 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   console.log('initializing click handlers')
 
+  $('#bottom-bar-volume').click(function (e) {
+    if (!self.song.player) return
+
+    //not muted
+    if (self.song.player.volume() > 0) {
+      $(this).removeClass('glyphicon-volume-up').addClass('glyphicon-volume-off')
+      self.song.player.volume(0.0)
+      return
+    }
+    //muted
+    $(this).removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up')
+    //TODO: restore last volume
+    self.song.player.volume(1.0)
+    
+  })
 
   // queue
   $('#song-submit-button').click(function (e) {
@@ -554,16 +577,26 @@ PeerTunes.prototype.addAvatar = function (id, headbob) {
   var params = {userId: userId, label: id, avatar: 1, x: x, y: y, z: Math.floor(y)}
   var rendered = Mustache.render(template, params)
 
-  var avatar = $(rendered)
-  if (headbob === true) avatar.find('.audience-head').addClass('headbob-animation')
-  $('#moshpit').append(avatar)
-  $('#' + userId).tooltip()
+  var $avatar = $(rendered)
+  if (headbob === true) $avatar.find('.audience-head').addClass('headbob-animation')
+
+  //popover init
+  template = $('#popoverTmpl').html()
+  Mustache.parse(template)
+  var showMenu = (id === this.username) //don't show menu for self
+  console.log("Show menu for ",id,": ",showMenu)
+  params = {id: id, menu: showMenu}
+  rendered = Mustache.render(template, params)
+  $avatar.webuiPopover({title: '', content: rendered, placement:'top', trigger:'hover', padding: false})
+
+  $('#moshpit').append($avatar)
 }
 
 PeerTunes.prototype.removeAvatar = function (id) {
   console.log('Removing avatar for ', id)
-  $('#user-' + id).remove()
-  $('#user-' + id).tooltip('destroy')
+  var $avatar = $('#user-' + id)
+  $avatar.remove()
+  $avatar.webuiPopover('destroy')
 }
 
 PeerTunes.prototype.stopAllHeadBobbing = function () {
@@ -670,6 +703,19 @@ PeerTunes.prototype.songTimeout = function () {
     self.inQueue = false
     $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
   }
+}
+
+PeerTunes.prototype.updateProgress = function(decimal) {
+  var percent = decimal*100 + '%'
+  $('#song-progress-bar').css('width',percent)
+}
+
+PeerTunes.prototype.setPlayerTitle = function(title) {
+  var maxLength = 40
+  if (title.length > maxLength) {
+    title = title.substring(0, maxLength) + '...'
+  }
+  $('#song-title').text(title)
 }
 
 // HOST function

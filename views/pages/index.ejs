@@ -1,8 +1,11 @@
 <% include ../partials/header %>
-	<% include ../partials/welcome %>
+
+<% include ../partials/welcome %>
+
+<div class="container-fluid">
 
 				<div class="row">
-					<div class="col-md-3 sidebar">
+					<div id="sidebar-left">
 						<div class="row">
 							<div class="col-md-12">
 								<div id="my-queue" class="panel panel-default">
@@ -32,15 +35,16 @@
 						</div>
 						
 					</div>
-					<div class="col-md-6">
+					<div class="col-md-6 col-md-offset-3">
 						<div class="row">
-							<div class="col-md-12">
+							<div class="col-md-1">
+							</div>
+							<div class="col-md-10">
 								<div id="video-container" class="center-block">
 									<div id="video-frame" style="display: none;">
 										<video
 											id="vid1"
 											class="video-js vjs-default-skin"
-											controls
 											width="413" height="231"
 											data-setup='{ "techOrder": ["html5","youtube"], "sources": [], "youtube": { "iv_load_policy": 3, "disablekb": 1, "modestbranding": 1, "autoplay": 1 }}'
 											>
@@ -48,13 +52,14 @@
 										<audio 
 										    id="vid2" 
 										    class="video-js vjs-default-skin" 
-										    controls
 										    preload="auto"
 										    width="413" height="231"
 										    data-setup="{ }">
 									    </audio>
 									</div>
 								</div>
+							</div>
+							<div class="col-md-1">
 							</div>
 						</div>
 						<div class="row">
@@ -101,12 +106,13 @@
 					</div>
 				</div>
 				
-				
-			</div>
+</div>
 
-			
-			<% include ../partials/roomsModal %>
-			<% include ../partials/createRoomModal %>
-			<% include ../partials/templates %>
+<% include ../partials/bottomBar %>
+
+
+<% include ../partials/roomsModal %>
+<% include ../partials/createRoomModal %>
+<% include ../partials/templates %>
 
 <% include ../partials/footer %>
