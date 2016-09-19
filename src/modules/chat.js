@@ -3,12 +3,15 @@
 var Mustache = require('mustache')
 
 module.exports = (function () {
-  var config = {
+  var settings = {
     maxMessageLength: 300,
     template: '#chatMessageTmpl'
   }
   //private
-  var chatBody, chatInput, chatEnterButton
+
+  //jQuery objects
+  var chatBody, chatList, chatInput, chatEnterButton
+
   var onSubmitSuccess
   var nickname
 
@@ -27,7 +30,7 @@ module.exports = (function () {
 
   function filter ( msg ) {
     // truncate
-    if (msg.length > config.maxMessageLength) {
+    if (msg.length > settings.maxMessageLength) {
       msg = msg.substring(0, PT.config.maxChatLength)
     }
     // strip html
@@ -37,11 +40,12 @@ module.exports = (function () {
   }
 
   function isScrolledToBottom () {
-    return (chatBody.scrollHeight - chatBody.offsetHeight - chatBody.scrollTop < 1)
+    //[0] gets DOM element
+    return (chatBody[0].scrollHeight - chatBody[0].offsetHeight - chatBody[0].scrollTop < 1)
   }
   //TODO: fix this
   function scrollToBottom() {
-    var height = chatBody.scrollHeight
+    var height = chatBody[0].scrollHeight
     chatBody.scrollTop(height)
   }
 
@@ -68,9 +72,9 @@ module.exports = (function () {
     console.log('chat: [' + id + ' : ' + msg + ']')
     var emojiMsg = emojify(msg)
 
-    var template = $(config.template).html()
+    var template = $(settings.template).html()
     var params = {id: id, message: emojiMsg}
-    chatBody.append(Mustache.render(template, params))
+    chatList.append(Mustache.render(template, params))
 
     //return filtered message for convenience
     return msg
@@ -78,26 +82,16 @@ module.exports = (function () {
 
   //public
   return {
-      //setters
-      setInput: function ( selector ) {
-        chatInput = $(selector)
-      },
-      setBody: function ( selector ) {
-        chatBody = $(selector)
-      },
-      setEnterButton: function ( selector ) {
-        chatEnterButton = $(selector)
-      },
-      setNickname: function ( name ) {
-        nickname = name
-      },
-
-      //getters
-      getInputText: function () {
-        return chatInput.val()
-      },
-      init: function () {
+      init: function (config) {
         console.log('Initializing chat')
+
+        chatInput = $(config.chatInput)
+        chatBody = $(config.chatBody)
+        chatEnterButton = $(config.chatEnterButton)
+        chatList = $(config.chatList)
+        nickname = config.name
+
+
         //click handlers
         chatEnterButton.click(function (e) {
           //TODO: broadcast message too
@@ -113,14 +107,16 @@ module.exports = (function () {
           }
         })
       },
-      //simple events
+      getInputText: function () {
+        return chatInput.val()
+      },
       onSubmitSuccess: function ( callback ) {
         onSubmitSuccess = callback
       },
       appendMsg: appendMsg,
       submitMessage: submitMessage,
       clear: function () {
-        chatBody.html('')
+        chatList.html('')
       },
       clearInput: clearInput,
       scrollToBottom: scrollToBottom,

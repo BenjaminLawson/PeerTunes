@@ -211,13 +211,14 @@ PeerTunes.prototype.init = function () {
 
   this.dummySelfPeer = {username: this.username, id: this.peerId}
 
-  // assign chat selectors
-  chat.setBody('#chat-list')
-  chat.setInput('#chat-text')
-  chat.setEnterButton('#chat-enter')
-  chat.init()
-
-  chat.setNickname(this.username)
+  var chatConfig = {
+    chatBody: '#chat .panel-body',
+    chatList: '#chat-list',
+    chatInput: '#chat-text',
+    chatEnterButton: '#chat-enter',
+    name: self.username
+  }
+  chat.init(chatConfig)
 
   chat.onSubmitSuccess(function (text) {
     if (self.isHost) {
@@ -615,7 +616,7 @@ PeerTunes.prototype.addAvatar = function (id, headbob) {
   //popover init
   template = $('#popoverTmpl').html()
   Mustache.parse(template)
-  var showMenu = (id === this.username) //don't show menu for self
+  var showMenu = (id !== this.username) //don't show menu for self
   console.log("Show menu for ",id,": ",showMenu)
   params = {id: id, menu: showMenu}
   rendered = Mustache.render(template, params)
