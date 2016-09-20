@@ -1,3 +1,8 @@
+//native
+//var EventEmitter = require('events').EventEmitter
+//var inherits = require('inherits')
+
+//3rd party libraries
 var hat = require('hat')
 var Peer = require('simple-peer')
 var Tracker = require('bittorrent-tracker/client')
@@ -7,6 +12,7 @@ var localforage = require('localforage')
 var dragDrop = require('drag-drop')
 var mediaTags = require('jsmediatags')
 
+//modules
 var YT = require('./YT')
 var chat = require('./chat')
 var onPeer = require('./peer-handler')
@@ -109,7 +115,6 @@ function PeerTunes (config) {
           if (data.infoHash) {
             console.log('Song has infoHash, leeching')
             self.removeLastTorrent()
-            //TODO: get cover from mp3, might need mp3 owner to seed seperately
             //TODO: callback not being called for long time if MP3 is long
             //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
             //once it starts, it is fast
@@ -194,6 +199,12 @@ function PeerTunes (config) {
       self.setPlayerTitle('')
     }
   }
+
+  //cache jQuery selectors
+  this.$moshpit = $(config.selectors.moshpit)
+  this.$likeButton = $(config.selectors.likeButton)
+  this.$dislikeButton = $(config.selectors.dislikeButton)
+  this.$joinQueueButton = $(config.selectors.joinQueueButton)
 }
 
 PeerTunes.prototype.init = function () {
@@ -211,16 +222,11 @@ PeerTunes.prototype.init = function () {
 
   this.dummySelfPeer = {username: this.username, id: this.peerId}
 
-  var chatConfig = {
-    chatBody: '#chat .panel-body',
-    chatList: '#chat-list',
-    chatInput: '#chat-text',
-    chatEnterButton: '#chat-enter',
-    name: self.username
-  }
-  chat.init(chatConfig)
+  //chat setup
+  this.config.chat.name = this.username
+  chat.init(this.config.chat)
 
-  chat.onSubmitSuccess(function (text) {
+  chat.on('submit', function (text) {
     if (self.isHost) {
       self.broadcastToRoom({msg: 'chat', value: {id: self.username, text: text}})
     } else {
@@ -228,33 +234,27 @@ PeerTunes.prototype.init = function () {
         self.hostPeer.send(JSON.stringify({msg: 'chat', text: text}))
       }
     }
+
+    self.avatarChatPopover(self.username, text)
   })
 
-  var rtcConfig = {
-    iceServers: [
-      {'urls': 'stun:stun.l.google.com:19302'},
-      {'urls': 'stun:stun3.l.google.com:19302'},
-      {'urls': 'stun:stun4.l.google.com:19302'},
-      {'urls': 'turn:numb.viagenie.ca','username': 'peertunes.turn@gmail.com','credential': 'peertunes-turn'}
-    ]
-  }
+
 
   // set up tracker
   this.tracker = new Tracker({
     peerId: self.peerId,
     announce: self.config.trackerURL,
-    infoHash: new Buffer(20).fill('01234567890123456789'), // temp
-    rtcConfig: rtcConfig
+    infoHash: new Buffer(20).fill('01234567890123456787'), // temp, use url in future?
+    rtcConfig: self.config.rtc
   })
   this.tracker.start()
   this.initTrackerListeners()
 
   // set up webtorrent
-  // TODO: rtcConfig
   global.WEBTORRENT_ANNOUNCE = [ this.config.trackerURL ]
   this.torrentClient = new WebTorrent({
     tracker: {
-      rtcConfig: rtcConfig,
+      rtcConfig: self.config.rtc,
       announce: ['wss://tracker.webtorrent.io','wss://tracker.openwebtorrent.com','wss://tracker.btorrent.xyz']
     }
   })
@@ -343,6 +343,22 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   console.log('initializing click handlers')
 
+  $('#song-search-submit-button').click(function(e) {
+    var search = $('#song-search-input').val()
+    if (search.length < 1) return
+    YT.getSearchResults(search, function (results) {
+      console.log('Search results: ', results)
+
+      //TEST:
+      $('#song-search-results').html('')
+      $('#song-search-results').append('<ul>')
+      results.forEach(function (item) {
+        $('#song-search-results').append('<li>'+item.title+'</li>') //TEMP
+      })
+      $('#song-search-results').append('</ul>')
+    })
+  })
+
   $('#bottom-bar-volume').click(function (e) {
     if (!self.song.player) return
 
@@ -360,6 +376,7 @@ PeerTunes.prototype.initClickHandlers = function () {
   })
 
   // queue
+  /*
   $('#song-submit-button').click(function (e) {
     console.log('clicked submit song')
     var id = $('#song-submit-text').val()
@@ -369,12 +386,13 @@ PeerTunes.prototype.initClickHandlers = function () {
     })
     $('#song-submit-text').val('')
   })
+*/
   // create room
   $('#btn-create-room').click(function (e) {
     console.log('create/destroy room clicked')
 
     $('.audience-member').tooltip('destroy')
-    $('#moshpit').html('')
+    self.$moshpit.html('')
     chat.clear()
 
     if (self.isHost) { // button = Destroy Room
@@ -406,7 +424,7 @@ PeerTunes.prototype.initClickHandlers = function () {
   })
 
   // join DJ queue
-  $('#btn-join-queue').click(function (e) {
+  this.$joinQueueButton.click(function (e) {
     console.log('Clicked join/leave queue')
     if (!self.inQueue) {
       self.inQueue = true
@@ -433,7 +451,7 @@ PeerTunes.prototype.initClickHandlers = function () {
   // rating buttons
   // TODO: keep button active after click
   // TODO: host keeps track of votes changing (eg. changing vote from -1 to +1 should add 2, but the guest can't be trusted for this)
-  $('#like-button').click(function (e) {
+  this.$likeButton.click(function (e) {
     console.log('Rate +1')
     if (self.vote == 0 || self.vote == -1) {
       $('#user-' + self.username + ' .audience-head').addClass('headbob-animation')
@@ -447,7 +465,8 @@ PeerTunes.prototype.initClickHandlers = function () {
       self.vote = 1
     }
   })
-  $('#dislike-button').click(function (e) {
+
+  this.$dislikeButton.click(function (e) {
     console.log('Rate -1')
     if (self.vote == 1 || self.vote == 0) {
       $('#user-' + self.username + ' .audience-head').removeClass('headbob-animation')
@@ -542,7 +561,7 @@ PeerTunes.prototype.leaveRoom = function () {
 
 PeerTunes.prototype.resetRoom = function () {
   $('.audience-member').tooltip('destroy')
-  $('#moshpit').html('')
+  this.$moshpit.html('')
   chat.clear()
   this.song.end()
   $('#btn-leave-room').hide()
@@ -622,7 +641,7 @@ PeerTunes.prototype.addAvatar = function (id, headbob) {
   rendered = Mustache.render(template, params)
   $avatar.webuiPopover({title: '', content: rendered, placement:'top', trigger:'hover', padding: false})
 
-  $('#moshpit').append($avatar)
+  this.$moshpit.append($avatar)
 }
 
 PeerTunes.prototype.removeAvatar = function (id) {
@@ -901,12 +920,12 @@ PeerTunes.prototype.tagsFromFile = function (file, callback) {
     })
 }
 
-//TODO: show popover for self messages (refactor chat)
+//TODO: fix autoHide hiding other popovers
 PeerTunes.prototype.avatarChatPopover = function (id, content) {
   content = '<div class="text-center">'+content+'</div>'
 
-  console.log('avatar chat popover ', id, ': ', content)
-  $user = $('#user-'+id+' .audience-head')
+  var selector = '#user-'+id+' .audience-head'
+  $user = $(selector)
   var options = {
     title: '', 
     placement: 'top', 
@@ -914,16 +933,17 @@ PeerTunes.prototype.avatarChatPopover = function (id, content) {
     trigger:'manual', 
     width: 190, 
     animation: 'pop', 
-    multi: true
+    multi: true,
+    cache: false, //doesn't work?
+    autoHide:2600,
+    onHide: function ($el) { //hack so content will update
+      $user.webuiPopover('destroy')
+    }
   }
+
   $user.webuiPopover(options)
 
   $user.webuiPopover('show')
-  setTimeout(function () {
-    $user.webuiPopover('hide')
-    $user.webuiPopover('destroy')
-  },2600)
-
 }
 
 module.exports = PeerTunes

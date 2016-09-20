@@ -17,12 +17,9 @@
 										</ul>
 									</div>
 									<div class="panel-footer">
-										<div class="input-group">
-											<input type="text" id="song-submit-text" class="form-control" placeholder="YouTube Video ID">
-											<span class="input-group-btn">
-												<button id="song-submit-button" class="btn btn-default" type="button">Submit</button>
-											</span>
-										</div>
+										<button id="song-submit-button" class="btn btn-default btn-block" type="button" data-toggle="modal" data-target="#addSongModal">
+											<span class="glyphicon glyphicon-plus"></span> Add New Songs
+										</button>
 									</div>
 								</div>
 							</div>
@@ -112,9 +109,11 @@
 
 <% include ../partials/bottomBar %>
 
-
+<!-- Modals -->
 <% include ../partials/roomsModal %>
 <% include ../partials/createRoomModal %>
+<% include ../partials/addSongModal %>
+
 <% include ../partials/templates %>
 
 <% include ../partials/footer %>

@@ -1,4 +1,5 @@
 // Peer Handler 
+//TODO: use event emitter to decouple peer specific code from PT code
 
 var YT = require('./YT')
 

@@ -1,5 +1,6 @@
 // YouTube
-//TODO: use google api library
+
+var queryString = require('query-string')
 
 module.exports = (function () {
   //private
@@ -7,6 +8,8 @@ module.exports = (function () {
   var config = {
     apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY' // YouTube data api key
   }
+
+  var baseURL = 'https://www.googleapis.com/youtube/v3/'
 
   //public
   return {
@@ -18,7 +21,9 @@ module.exports = (function () {
         duration: 0 //seconds
       }
 
-      var apiQuery = 'https://www.googleapis.com/youtube/v3/videos?id=' + id + '&key=' + config.apiKey + '&part=snippet,contentDetails'
+      //TODO: use queryString
+
+      var apiQuery = baseURL + 'videos?id=' + id + '&key=' + config.apiKey + '&part=snippet,contentDetails'
       var firstResult, ISODuration
 
       console.log('YT API query: ', apiQuery)
@@ -33,9 +38,28 @@ module.exports = (function () {
         callback(meta)
       })
     },
-    //TODO
-    getSearchResults: function (search) {
-      var apiQuery = 'https://www.googleapis.com/youtube/v3/search'
+    //TODO: thumbnails
+    getSearchResults: function (search, callback) {
+      var query = {
+        'part': 'snippet',
+        'maxResults': 30,
+        'q': search,
+        'type': 'video',
+        'videoDefinition': 'any',
+        'videoEmbeddable': true,
+        'fields': 'items(id,snippet(thumbnails/standard,title))',
+        'key': config.apiKey
+      }
+      var apiQuery = baseURL + 'search?' + queryString.stringify(query)
+      console.log('YT Search API query: ', apiQuery)
+
+      $.getJSON(apiQuery, function (result) {
+        console.log('YT Search API Result: ', result)
+        result = result.items.map(function (item) {
+          return {id: item.id.videoId, title: item.snippet.title}
+        })
+        callback(result)
+      })
     }
   }
 }())
