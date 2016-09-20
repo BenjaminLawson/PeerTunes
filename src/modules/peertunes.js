@@ -737,6 +737,8 @@ PeerTunes.prototype.songTimeout = function () {
 
   this.song.timeout = null
   this.stopAllHeadBobbing()
+  this.setPlayerTitle('')
+  //this.updateProgress(0) //gets overridden :(
 
   function endDJ () {
     self.cycleMyQueue()
