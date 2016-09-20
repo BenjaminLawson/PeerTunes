@@ -151,6 +151,19 @@ body {
   overflow-y: scroll;
 }
 
+/* Song Search */
+#song-search-result-right {
+  position: absolute;
+  top: 16px;
+  right: 10px;
+} 
+#song-search-results {
+  margin-top:10px;
+  max-height: 400px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
 /* Headbob CSS3 animation */
 .headbob-animation{
   animation: headbobAnimationFrames ease-in-out 1.7s;

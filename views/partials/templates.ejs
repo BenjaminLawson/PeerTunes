@@ -1,5 +1,5 @@
 <script id="queueItemTmpl" type="x-tmpl-mustache">
-	<li class="list-group-item" data-source="{{ source }}" data-id="{{ id }}" data-title="{{ title }}">
+	<li class="list-group-item queue-item" data-source="{{ source }}" data-id="{{ id }}" data-title="{{ title }}">
 		<span class="badge">{{ source }}</span>
 		{{ title }}
 	</li>
@@ -44,4 +44,11 @@
 	    <li class="text-center"><a href="#">Friend Request</a></li>
 	    {{/menu}}
   	</ul>
+</script>
+
+<script id="songSearchResultTmpl" type="x-tmpl-mustache">
+  <a href="#" class="list-group-item song-search-result" data-id="{{ id }}" data-title="{{ title }}">
+    <h5 class="list-group-item-heading">{{ title }}</h5>
+    <div id="song-search-result-right"><span class="glyphicon glyphicon-plus"></span></div>
+  </a>
 </script>

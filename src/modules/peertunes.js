@@ -313,7 +313,23 @@ PeerTunes.prototype.init = function () {
   })
 
   // init Dragula in queue
-  dragula([document.querySelector('#my-queue-list')])
+  var drake = dragula([document.querySelector('#my-queue-list')])
+  //save queue when reordered
+  drake.on('drop', function (el, target, source, sibling) {
+    self.saveQueueToLocalStorage()
+  })
+
+  //restore queue from localstorage
+  this.restoreQueue()
+
+  //key listeners
+  var ENTER_KEY = 13
+
+  $('#song-search-input').keydown(function (e) {
+    if (e.keyCode == ENTER_KEY) {
+      self.doSongSearch()
+    }
+  })
 }
 
 PeerTunes.prototype.initTrackerListeners = function () {
@@ -344,19 +360,7 @@ PeerTunes.prototype.initClickHandlers = function () {
   console.log('initializing click handlers')
 
   $('#song-search-submit-button').click(function(e) {
-    var search = $('#song-search-input').val()
-    if (search.length < 1) return
-    YT.getSearchResults(search, function (results) {
-      console.log('Search results: ', results)
-
-      //TEST:
-      $('#song-search-results').html('')
-      $('#song-search-results').append('<ul>')
-      results.forEach(function (item) {
-        $('#song-search-results').append('<li>'+item.title+'</li>') //TEMP
-      })
-      $('#song-search-results').append('</ul>')
-    })
+    self.doSongSearch()
   })
 
   $('#bottom-bar-volume').click(function (e) {
@@ -375,18 +379,10 @@ PeerTunes.prototype.initClickHandlers = function () {
     
   })
 
-  // queue
-  /*
   $('#song-submit-button').click(function (e) {
-    console.log('clicked submit song')
-    var id = $('#song-submit-text').val()
-    YT.getVideoMeta(id, function (meta) {
-      console.log('Adding ', meta.title)
-      self.addSongToQueue({title: meta.title, source: 'YOUTUBE', id: id})
-    })
-    $('#song-submit-text').val('')
+    $('#song-search-results').html('')
   })
-*/
+
   // create room
   $('#btn-create-room').click(function (e) {
     console.log('create/destroy room clicked')
@@ -756,7 +752,7 @@ PeerTunes.prototype.updateProgress = function (decimal) {
 }
 
 PeerTunes.prototype.setPlayerTitle = function (title) {
-  var maxLength = 55
+  var maxLength = 65 
   if (title.length > maxLength) {
     title = title.substring(0, maxLength) + '...'
   }
@@ -810,6 +806,8 @@ PeerTunes.prototype.addSongToQueue = function (meta) {
   Mustache.parse(template)
   var params = {title: meta.title,source: meta.source, id: meta.id}
   $('#my-queue-list').append(Mustache.render(template, params))
+
+  this.saveQueueToLocalStorage()
 }
 
 PeerTunes.prototype.cycleMyQueue = function () {
@@ -944,6 +942,82 @@ PeerTunes.prototype.avatarChatPopover = function (id, content) {
   $user.webuiPopover(options)
 
   $user.webuiPopover('show')
+}
+
+PeerTunes.prototype.doSongSearch = function() {
+  var self = this 
+
+  var search = $('#song-search-input').val()
+  if (search.length < 1) return
+  YT.getSearchResults(search, function (results) {
+    console.log('Search results: ', results)
+
+    var template = $('#songSearchResultTmpl').html()
+    Mustache.parse(template)
+    
+    $('#song-search-results').html('')
+    var resultsHTML = ''
+    results.forEach(function (item) {
+      var params = {title: item.title, id: item.id}
+      var rendered = Mustache.render(template, params)
+      resultsHTML += rendered
+    })
+    $('#song-search-results').append(resultsHTML)
+
+    $('.song-search-result').click(function (e){
+      $(this).addClass('active')
+      var source = 'YOUTUBE' //TODO: get source from current search type
+      var id = $(this).data('id')
+      var title = $(this).data('title')
+      var meta = {title: title, id: id, source: source}
+      self.addSongToQueue(meta)
+    })
+  })
+}
+
+PeerTunes.prototype.saveQueueToLocalStorage = function () {
+  var queue = []
+  //{source, id, title}
+  $('#my-queue-list .queue-item').each(function (index) {
+    var title = $(this).data('title')
+    var source = $(this).data('source')
+    var id = $(this).data('id')
+    queue.push({title: title, source: source, id: id})
+  })
+  var queueJSON = {queue: queue}
+  console.log('saving queue to localstorage:', queueJSON)
+  localforage.setItem('queue', queueJSON).then(function () {
+    return localforage.getItem('queue')
+  }).then(function (value) {
+    console.log('Queue saved to localstorage')
+  }).catch(function (err) {
+    console.log('Error saving queue: ', err)
+  })
+}
+
+PeerTunes.prototype.getQueueFromLocalStorage = function (callback) {
+  localforage.getItem('queue').then(function(value) {
+    console.log('Got queue from localstorage: ', value)
+    callback(value.queue)
+  }).catch(function(err) {
+      console.log('Error retreiving queue from localstorage, maybe this is the first use')
+      console.log(err)
+  })
+}
+
+PeerTunes.prototype.setQueueFromArray = function (queueArray) {
+  var self = this
+  queueArray.forEach(function (item) {
+    self.addSongToQueue(item)
+  })
+}
+
+PeerTunes.prototype.restoreQueue = function () {
+  var self = this
+
+  this.getQueueFromLocalStorage(function (queue) {
+    self.setQueueFromArray(queue)
+  })
 }
 
 module.exports = PeerTunes
