@@ -199,7 +199,7 @@ function onPeer (peer) {
               // ignore if not from host
               if (peer !== self.hostPeer) return
 
-              var queueFront = self.frontOfSongQueue()
+              var queueFront = self.songQueue.front()
               if (queueFront.source === 'MP3') {
                 //TODO: send song duration, since streaming doesn't support duration
                 self.removeLastTorrent()

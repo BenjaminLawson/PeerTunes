@@ -16,6 +16,7 @@ var mediaTags = require('jsmediatags')
 var YT = require('./YT')
 var chat = require('./chat')
 var onPeer = require('./peer-handler')
+var SongQueue = require('./queue')
 
 // TODO: add element selectors to config
 function PeerTunes (config) {
@@ -48,6 +49,8 @@ function PeerTunes (config) {
   this.isDJ = false // this peer is the dj
 
   this.player = {video: null, audio: null, preview: null} // videojs player objects
+
+  this.songQueue = new SongQueue(config.songQueue)
 
   this.host = { // room data used by host
     meta: {title: 'Untitled'},
@@ -294,7 +297,7 @@ PeerTunes.prototype.init = function () {
 
     console.log('Reading tags')
     self.tagsFromFile(file, function(tags) {
-      self.addSongToQueue({title: tags.combinedTitle, source: 'MP3', id: key})
+      self.songQueue.addSong({title: tags.combinedTitle, source: 'MP3', id: key})
     })
 
     // store files in localstorage so they can be seeded in future
@@ -320,7 +323,7 @@ PeerTunes.prototype.init = function () {
   })
 
   //restore queue from localstorage
-  this.restoreQueue()
+  this.songQueue.restore()
 
   //key listeners
   var ENTER_KEY = 13
@@ -674,7 +677,7 @@ PeerTunes.prototype.playNextDJSong = function () {
       console.log('Host (you) is the next DJ')
       this.isDJ = true
 
-      var media = this.frontOfSongQueue()
+      var media = this.songQueue.front()
 
       // callback setSongTimeout when video meta is available
       this.song.play({id: media.id, source: media.source}, 0, this.setSongTimeout) // play in host's player
@@ -741,7 +744,7 @@ PeerTunes.prototype.songTimeout = function () {
   //this.updateProgress(0) //gets overridden :(
 
   function endDJ () {
-    self.cycleMyQueue()
+    self.songQueue.cycle()
     self.isDJ = false
     self.inQueue = false
     $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
@@ -803,29 +806,6 @@ PeerTunes.prototype.removeDJFromQueue = function (peer) {
   }
 }
 
-PeerTunes.prototype.addSongToQueue = function (meta) {
-  var template = $('#queueItemTmpl').html()
-  Mustache.parse(template)
-  var params = {title: meta.title,source: meta.source, id: meta.id}
-  $('#my-queue-list').append(Mustache.render(template, params))
-
-  this.saveQueueToLocalStorage()
-}
-
-PeerTunes.prototype.cycleMyQueue = function () {
-  $('#my-queue-list li').first().remove().appendTo('#my-queue-list')
-}
-
-PeerTunes.prototype.frontOfSongQueue = function () {
-  var queueSize = $('#my-queue-list li').length
-  if (queueSize > 0) {
-    var $top = $('#my-queue-list li').first()
-    var song = {id: $top.data('id'), source: $top.data('source'), title: $top.data('title')}
-    console.log('frontOfSongQueue: ', song)
-    return song
-  }
-  return null
-}
 
 // HOST function
 PeerTunes.prototype.cleanupPeer = function (peer) {
@@ -972,54 +952,13 @@ PeerTunes.prototype.doSongSearch = function() {
       var id = $(this).data('id')
       var title = $(this).data('title')
       var meta = {title: title, id: id, source: source}
-      self.addSongToQueue(meta)
+      self.songQueue.addSong(meta)
     })
   })
 }
 
-PeerTunes.prototype.saveQueueToLocalStorage = function () {
-  var queue = []
-  //{source, id, title}
-  $('#my-queue-list .queue-item').each(function (index) {
-    var title = $(this).data('title')
-    var source = $(this).data('source')
-    var id = $(this).data('id')
-    queue.push({title: title, source: source, id: id})
-  })
-  var queueJSON = {queue: queue}
-  console.log('saving queue to localstorage:', queueJSON)
-  localforage.setItem('queue', queueJSON).then(function () {
-    return localforage.getItem('queue')
-  }).then(function (value) {
-    console.log('Queue saved to localstorage')
-  }).catch(function (err) {
-    console.log('Error saving queue: ', err)
-  })
-}
 
-PeerTunes.prototype.getQueueFromLocalStorage = function (callback) {
-  localforage.getItem('queue').then(function(value) {
-    console.log('Got queue from localstorage: ', value)
-    callback(value.queue)
-  }).catch(function(err) {
-      console.log('Error retreiving queue from localstorage, maybe this is the first use')
-      console.log(err)
-  })
-}
 
-PeerTunes.prototype.setQueueFromArray = function (queueArray) {
-  var self = this
-  queueArray.forEach(function (item) {
-    self.addSongToQueue(item)
-  })
-}
 
-PeerTunes.prototype.restoreQueue = function () {
-  var self = this
-
-  this.getQueueFromLocalStorage(function (queue) {
-    self.setQueueFromArray(queue)
-  })
-}
 
 module.exports = PeerTunes

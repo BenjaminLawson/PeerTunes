@@ -72,6 +72,10 @@ var config = {
   moshpit: {
   	width: 234,
   	height: 234
+  },
+  songQueue: {
+    queue: '#my-queue-list',
+    localstorageKey: 'queue'
   }
 }
 
