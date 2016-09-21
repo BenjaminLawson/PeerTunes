@@ -38,7 +38,7 @@ module.exports = (function () {
     }
     // strip html
     msg = $('<p>').html(msg).text()
-    msg = emojify(msg)
+    //msg = emojify(msg)
     return msg
   }
 
@@ -59,7 +59,10 @@ module.exports = (function () {
   function submitMessage () {
     var text = $chatInput.val()
     if (text.trim().length < 1)  return
-    console.log('submitting ', text)
+    //console.log('submitting ', text)
+
+    //TODO: do not emit emojified text
+    //causes guest->host emoji to be removed
     emitter.emit('submit', filter(text))
 
     appendMsg(nickname, text)
@@ -69,8 +72,8 @@ module.exports = (function () {
   }
 
   function appendMsg(id, msg) {
-    console.log('chat: [' + id + ' : ' + msg + ']')
-    msg = filter (msg)
+    //console.log('chat: [' + id + ' : ' + msg + ']')
+    msg = emojify( filter(msg) )
     var template = $(settings.template).html()
     var params = {id: id, message: msg}
     $chatList.append(Mustache.render(template, params))

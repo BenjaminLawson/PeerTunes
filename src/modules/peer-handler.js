@@ -147,7 +147,9 @@ function onPeer (peer) {
 
             break
           case 'leave-queue':
-            if (self.isHost) self.removeDJFromQueue(peer)
+            if (!self.isHost) return
+              
+            self.removeDJFromQueue(peer)
             break
           case 'end-song':
             // end song prematurely (eg. the host leaves dj queue while their song is playing)
@@ -172,10 +174,11 @@ function onPeer (peer) {
               self.chat.appendMsg(username, data.value.text)
               self.avatarChatPopover(data.value.id, self.chat.emojify(data.value.text))
             }
-            //self.avatarChatPopover(data.value.id, self.chat.emojify(data.value.text))
-            if (wasAtBottom) self.chat.scrollToBottom() //TODO: fix
+
+            if (wasAtBottom) self.chat.scrollToBottom()
             break
           case 'leave':
+            //TODO: check if peer was in dj queue & remove
             if (self.isHost) self.cleanupPeer(peer)
             else self.removeAvatar(data.value)
             break

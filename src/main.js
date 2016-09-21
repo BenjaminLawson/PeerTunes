@@ -45,7 +45,7 @@ var PeerTunes = require('./modules/peertunes')
 
 var config = {
 	maxRoomSize: 50, // arbitrary until further testing, NOT USED YET
-  trackerURL: 'wss://tracker.webtorrent.io',
+  trackerURL: 'wss://tracker.openwebtorrent.com', //wss://tracker.webtorrent.io
   username: null, //set by welcome view's username input
   chat: {
     chatBody: '#chat .panel-body',
@@ -70,12 +70,15 @@ var config = {
   	joinQueueButton: '#btn-join-queue'
   },
   moshpit: {
-  	width: 234,
-  	height: 234
+    //TODO
+  	width: -1,
+  	height: -1
   },
   songQueue: {
     queue: '#my-queue-list',
-    localstorageKey: 'queue'
+    localstorageKey: 'queue',
+    queueItem: '.queue-item',
+    itemTemplate: '#queueItemTmpl'
   }
 }
 

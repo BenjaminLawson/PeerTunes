@@ -148,6 +148,7 @@ body {
 /* My Queue */
 #my-queue .panel-body{
 	min-height: 390px;
+  max-height: 390px;
   overflow-y: scroll;
 }
 

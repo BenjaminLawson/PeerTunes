@@ -9,14 +9,13 @@ var Tracker = require('bittorrent-tracker/client')
 var Mustache = require('mustache')
 var WebTorrent = require('webtorrent')
 var localforage = require('localforage')
-var dragDrop = require('drag-drop')
-var mediaTags = require('jsmediatags')
 
 //modules
 var YT = require('./YT')
 var chat = require('./chat')
 var onPeer = require('./peer-handler')
 var SongQueue = require('./queue')
+var TagReader = require('./tag-reader')
 
 // TODO: add element selectors to config
 function PeerTunes (config) {
@@ -51,6 +50,7 @@ function PeerTunes (config) {
   this.player = {video: null, audio: null, preview: null} // videojs player objects
 
   this.songQueue = new SongQueue(config.songQueue)
+  this.tagReader = new TagReader()
 
   this.host = { // room data used by host
     meta: {title: 'Untitled'},
@@ -63,24 +63,20 @@ function PeerTunes (config) {
   this.song = {
     meta: {},
     timeout: null,
-    player: null,
+    player: null, //videojs player object of current player (video or audio)
     currentlyPlaying: null, // {id, source, infoHash}
     startTime: null, // start time when song started playing, sent to guests instead of current time in song
     infoHash: null, //infohash of torrent if current song is MP3
     play: function (data, time, callback) { // time in milliseconds, callback on metadata available
     	callback = callback.bind(self)
 
-      //call timeout if it wasn't called already
-      if (this.timeout != null) {
-        clearTimeout(this.timeout)
-        this.timeout = null
-        self.songTimeout()
-      }
+      //call song timeout if it wasn't called already
+      self.doSongTimeout()
 
       this.currentlyPlaying = data
       var id = data.id
       var source = data.source
-      console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
+      //console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
       console.log('play data: ', data)
 
       if (data.title) {
@@ -99,9 +95,8 @@ function PeerTunes (config) {
           $('#vid1').removeClass('hide')
 
           YT.getVideoMeta(id, function (meta) {
-            console.log('Got YouTube video metadata: ', meta)
+            //console.log('Got YouTube video metadata: ', meta)
             self.song.meta = meta
-            console.log(self.song)
             self.setPlayerTitle(meta.title)
             if (callback) callback()
           })
@@ -148,7 +143,7 @@ function PeerTunes (config) {
                   return
                 }
                 console.log(blob)
-                self.tagsFromFile(blob, function (tags) {
+                self.tagReader.tagsFromFile(blob, function (tags) {
                   self.setPlayerCover(tags.cover)
                 })
               })
@@ -158,17 +153,16 @@ function PeerTunes (config) {
             localforage.getItem(id).then(function (value) {
               // This code runs once the value has been loaded
               // from the offline store.
-              // TODO: get id3 data from mp3 file
               var file = new File([value], id, {type: 'audio/mp3', lastModified: Date.now()})
 
               var url = window.URL.createObjectURL(file)
-              console.log('file: ', file)
-              console.log('file url: ', url)
+              //console.log('file: ', file)
+              //console.log('file url: ', url)
               self.song.player.src({ type: 'audio/mp3', src: url })
               self.song.player.currentTime(time / 1000) // milliseconds -> seconds
               self.song.player.play()
 
-              self.tagsFromFile(file, function (tags) {
+              self.tagReader.tagsFromFile(file, function (tags) {
                 self.setPlayerTitle(tags.combinedTitle)
                 self.setPlayerCover(tags.cover)
               })
@@ -176,6 +170,7 @@ function PeerTunes (config) {
 
               // TODO: only called first time- fix
               self.song.player.one('loadedmetadata', function () {
+                console.log('player mp3 metadata loaded')
                 self.song.meta = {
                   duration: self.song.player.duration()
                 }
@@ -194,6 +189,7 @@ function PeerTunes (config) {
       self.vote = 0
     },
     end: function () {
+      console.log('ending song')
       if (this.player != null) {
         this.player.trigger('ended')
         this.player.pause()
@@ -238,7 +234,7 @@ PeerTunes.prototype.init = function () {
       }
     }
 
-    self.avatarChatPopover(self.username, text)
+    self.avatarChatPopover(self.username, chat.emojify(text) )
   })
 
 
@@ -288,38 +284,13 @@ PeerTunes.prototype.init = function () {
       })
     })
   })
-  // TODO: move to queue module
-  dragDrop('#my-queue', function (files) {
-    // console.log('Here are the dropped files', files)
-    var file = files[0]
-    var key = file.name
-
-
-    console.log('Reading tags')
-    self.tagsFromFile(file, function(tags) {
-      self.songQueue.addSong({title: tags.combinedTitle, source: 'MP3', id: key})
-    })
-
-    // store files in localstorage so they can be seeded in future
-    //TODO: add loading indicator while song saved to localstorage
-    var blob = new Blob([file])
-    localforage.setItem(key, blob).then(function () {
-
-      console.log('Done saving file to localstorage')
-      return localforage.getItem(key)
-    }).then(function (value) {
-      //set successful
-
-    }).catch(function (err) {
-      console.log('Error retreiving file:', err)
-    })
-  })
 
   // init Dragula in queue
+  //TODO: prevent top song from being dragged if DJ
   var drake = dragula([document.querySelector('#my-queue-list')])
   //save queue when reordered
   drake.on('drop', function (el, target, source, sibling) {
-    self.saveQueueToLocalStorage()
+    self.songQueue.saveToLocalStorage()
   })
 
   //restore queue from localstorage
@@ -372,18 +343,19 @@ PeerTunes.prototype.initClickHandlers = function () {
     //not muted
     if (self.song.player.volume() > 0) {
       $(this).removeClass('glyphicon-volume-up').addClass('glyphicon-volume-off')
-      self.song.player.volume(0.0)
+      self.setPlayerVolume(0.0)
       return
     }
     //muted
     $(this).removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up')
     //TODO: restore last volume
-    self.song.player.volume(1.0)
+    self.setPlayerVolume(1.0)
     
   })
 
-  $('#song-submit-button').click(function (e) {
+  $('#add-song-button').click(function (e) {
     $('#song-search-results').html('')
+    $('#song-search-input').val('')
   })
 
   // create room
@@ -426,7 +398,9 @@ PeerTunes.prototype.initClickHandlers = function () {
   this.$joinQueueButton.click(function (e) {
     console.log('Clicked join/leave queue')
     if (!self.inQueue) {
+      console.log('joined DJ queue')
       self.inQueue = true
+      console.log('inQueue: ', self.inQueue)
       $(this).removeClass('btn-primary').addClass('btn-info').text('Leave DJ Queue')
       if (self.isHost) {
         self.addDJToQueue(self.dummySelfPeer)
@@ -437,14 +411,20 @@ PeerTunes.prototype.initClickHandlers = function () {
       return
     }
     // was already in queue => wants to leave queue
+    console.log('left DJ queue')
+
     self.inQueue = false
+    console.log('inQueue: ', self.inQueue)
     $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
-    if (self.isHost) {
+    if (self.isDJ) {
       self.removeDJFromQueue(self.dummySelfPeer)
-      return
+      self.doSongTimeout()
     }
-    //is guest, so tell host that guest is leaving
-    self.hostPeer.send(JSON.stringify({msg: 'leave-queue'}))
+    if (!self.isHost) {
+      //is guest, so tell host that guest is leaving
+      self.hostPeer.send(JSON.stringify({msg: 'leave-queue'}))
+    }
+    
   })
 
   // rating buttons
@@ -671,13 +651,20 @@ PeerTunes.prototype.playNextDJSong = function () {
     return guest
   })
 
+  if (this.host.djQueue[0] === this.dummySelfPeer) this.isDJ = true
+
+  console.log('play next DJ, isDJ: ', this.isDJ)
+
   if (this.host.djQueue.length > 0) {
     // host is first in dj queue
-    if (this.host.djQueue[0] === this.dummySelfPeer) {
+    if (this.isDJ) {
       console.log('Host (you) is the next DJ')
       this.isDJ = true
 
       var media = this.songQueue.front()
+
+      //TODO: set currently playing
+      //this.song.currentlyPlaying = media
 
       // callback setSongTimeout when video meta is available
       this.song.play({id: media.id, source: media.source}, 0, this.setSongTimeout) // play in host's player
@@ -690,13 +677,13 @@ PeerTunes.prototype.playNextDJSong = function () {
         this.seedFileWithKey(media.id, function (torrent) {
           media.infoHash = torrent.infoHash
           self.song.infoHash = torrent.infoHash
-          //self.song.currentlyPlaying.
           self.broadcastToRoom({msg: 'song', value: media, dj: self.username, startTime: now}, null)
         })
       }
       else this.broadcastToRoom({msg: 'song', value: media, dj: this.username, startTime: now}, null)
     }else { // host is not first in queue
       // ask front dj for song
+      //TODO: timeout before skipping this dj if he doesn't respond
       this.host.djQueue[0].send(JSON.stringify({msg: 'queue-front'}))
     }
 
@@ -705,11 +692,21 @@ PeerTunes.prototype.playNextDJSong = function () {
   console.log('DJ queue empty')
 }
 
+PeerTunes.prototype.doSongTimeout = function () {
+  //console.log('do song timeout called')
+  if (this.song.timeout != null) {
+    console.log('Doing song timeout prematurely & nullifying it')
+    clearTimeout(this.song.timeout)
+    this.song.timeout = null
+    this.songTimeout()
+  }
+}
+
 //note: 'this' needs to be bound to PeerTunes
 PeerTunes.prototype.setSongTimeout = function () {
   var self = this
 
-  console.log('Player meta loaded, duration: ', self.song.meta.duration) // seconds
+  console.log('setting song timeout with duration: ', self.song.meta.duration) // seconds
 
   //TODO: timeout is wrong if user joined partway through song
   //calculate: duration - current time
@@ -720,34 +717,47 @@ PeerTunes.prototype.setSongTimeout = function () {
   }, durationInMilliseconds) 
 }
 
+//executes before next song, or after last song
 PeerTunes.prototype.songTimeout = function () {
   var self = this
 
-  console.log('song ended timeout')
+  console.log('songTimeout')
+  console.log('inQueue at timeOut:', self.inQueue)
 
-  if (this.isHost) {
-    //host is current DJ
-    if (this.host.djQueue[0] === this.dummySelfPeer) endDJ()
-
-    this.host.djQueue.shift()
-    this.song.currentlyPlaying = {}
-    this.song.meta = {}
-    this.song.infoHash = null
-    this.playNextDJSong()
-  } else if (this.isDJ) {
-    endDJ()
-  }
-
+  this.song.end()
   this.song.timeout = null
   this.stopAllHeadBobbing()
   this.setPlayerTitle('')
   //this.updateProgress(0) //gets overridden :(
 
+  if (this.isDJ) {
+    endDJ()
+  }
+
+  if (this.isHost) {
+    //host is current DJ
+    //if (this.host.djQueue[0] === this.dummySelfPeer) endDJ()
+
+    if (this.host.djQueue > 0) {
+      console.log('Shifting queue:', this.host.djQueue)
+      var front = this.host.djQueue.shift()
+      this.host.djQueue.push(front)
+    }
+    
+
+    this.song.currentlyPlaying = {}
+    this.song.meta = {}
+    this.song.infoHash = null
+
+    this.playNextDJSong()
+  }
+
+
+
   function endDJ () {
+    console.log('DJing ended')
     self.songQueue.cycle()
     self.isDJ = false
-    self.inQueue = false
-    $('#btn-join-queue').removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
   }
 }
 
@@ -774,6 +784,13 @@ PeerTunes.prototype.setPlayerCover = function (cover) {
 
 }
 
+PeerTunes.prototype.setPlayerVolume = function (volume) {
+  var players = [this.player.video, this.player.audio]
+  players.forEach( function (player) {
+    player.volume(volume)
+  })
+}
+
 // HOST function
 PeerTunes.prototype.addDJToQueue = function (peer) {
   console.log('Adding ', peer.username, ' to DJ queue')
@@ -790,20 +807,21 @@ PeerTunes.prototype.addDJToQueue = function (peer) {
 
 // HOST function
 PeerTunes.prototype.removeDJFromQueue = function (peer) {
+  console.log('Removing DJ from queue:', peer.username)
+  console.log('Queue before:', this.host.djQueue)
   var index = this.host.djQueue.indexOf(peer)
   if (index > -1) {
     this.host.djQueue.splice(index, 1)
-    if (index == 0) { // currently playing dj
-      clearTimeout(this.song.timeout)
+    if (index == 0) { //removed dj was currently playing dj
       // check if the dj that left was the only dj
       if (this.host.djQueue.length === 0) {
+        console.log('removed dj was last dj => ending song')
         this.song.end()
         this.broadcastToRoom({msg: 'end-song'})
-      } else {
-        this.playNextDJSong()
       }
     }
   }
+  console.log('Queue after:', this.host.djQueue)
 }
 
 
@@ -841,12 +859,12 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
     // This code runs once the value has been loaded
     // from the offline store.
     var file = new File([value], key, {type: 'audio/mp3', lastModified: Date.now()})
-    console.log('file: ', file)
+    //console.log('file: ', file)
 
     self.removeLastTorrent()
     self.torrentClient.seed(file, function (torrent) {
-      console.log('Client is seeding ' + torrent.magnetURI)
-      console.log('infoHash: ', torrent.infoHash)
+      //console.log('Client is seeding ' + torrent.magnetURI)
+      //console.log('infoHash: ', torrent.infoHash)
       self.currentTorrentID = torrent.infoHash
       callback(torrent)
     })
@@ -864,41 +882,7 @@ PeerTunes.prototype.removeLastTorrent = function () {
 	}
 }
 
-PeerTunes.prototype.tagsFromFile = function (file, callback) {
-  mediaTags.read(file, {
-      onSuccess: function(tag) {
-        tag = tag.tags
-        console.log(tag)
 
-        //https://github.com/aadsm/jsmediatags/issues/13
-        if (tag.picture) {
-            var base64String = ''
-            for (var i = 0; i < tag.picture.data.length; i++) {
-                base64String += String.fromCharCode(tag.picture.data[i])
-            }
-            var base64 = 'data:image/jpeg;base64,' + window.btoa(base64String)
-            tag.picture = base64
-          } else {
-            //TODO: use placeholder image
-            tag.picture = null
-          }
-
-
-        var meta = {
-          artist: tag.artist,
-          title: tag.title,
-          cover: tag.picture,
-
-          combinedTitle: tag.title + ' - ' + tag.artist //Here Comes the Sun - The Beatles
-        }
-
-        callback(meta)
-      },
-      onError: function(error) {
-        console.log('Error reading MP3 tags: ', error)
-      }
-    })
-}
 
 //TODO: fix autoHide hiding other popovers
 PeerTunes.prototype.avatarChatPopover = function (id, content) {
@@ -956,6 +940,7 @@ PeerTunes.prototype.doSongSearch = function() {
     })
   })
 }
+
 
 
 
