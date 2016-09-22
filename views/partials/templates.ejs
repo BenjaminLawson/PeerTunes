@@ -1,11 +1,16 @@
 <script id="queueItemTmpl" type="x-tmpl-mustache">
-	<li class="list-group-item queue-item" data-source="{{ source }}" data-id="{{ id }}" data-title="{{ title }}">
+	<li class="list-group-item queue-item"
+		data-source="{{ source }}" 
+		data-id="{{ id }}" 
+		data-title="{{ title }}" 
+		data-duration="{{ duration }}">
+
 		<div>{{ title }}</div>
-		<small>{{ source }} - 1:23</small>
+		<small>{{ source }} - {{ prettyDuration }}</small>
 		<div class="queue-item-controls">
 			<ul class="list-unstyled">
-				<li><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></li>
-				<li><span class="glyphicon glyphicon-menu-up" aria-hidden="true"></span></li>
+				<li><span class="glyphicon glyphicon-remove song-remove" aria-hidden="true"></span></li>
+				<li><span class="glyphicon glyphicon-menu-up song-top-control" aria-hidden="true"></span></li>
 			</ul>
 		</div>
 	</li>
@@ -53,7 +58,7 @@
 </script>
 
 <script id="songSearchResultTmpl" type="x-tmpl-mustache">
-  <a href="#" class="list-group-item song-search-result" data-id="{{ id }}" data-title="{{ title }}">
+  <a href="#" class="list-group-item song-search-result" data-id="{{ id }}" data-title="{{ title }}" data-duration="{{ duration }}">
     <h5 class="list-group-item-heading">{{ title }}</h5>
     <div id="song-search-result-right"><span class="glyphicon glyphicon-plus"></span></div>
   </a>

@@ -77,7 +77,7 @@ function PeerTunes (config) {
       this.currentlyPlaying = data
       var id = data.id
       var source = data.source
-      //console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
+      console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
       console.log('play data: ', data)
 
       if (data.title) {
@@ -96,7 +96,7 @@ function PeerTunes (config) {
           $('#vid1').removeClass('hide')
 
           YT.getVideoMeta(id, function (meta) {
-            //console.log('Got YouTube video metadata: ', meta)
+            console.log('Got YouTube video metadata: ', meta)
             self.song.meta = meta
             self.setPlayerTitle(meta.title)
             if (callback) callback()
@@ -938,7 +938,7 @@ PeerTunes.prototype.doSongSearch = function() {
     $('#song-search-results').html('')
     var resultsHTML = ''
     results.forEach(function (item) {
-      var params = {title: item.title, id: item.id}
+      var params = {title: item.title, id: item.id, duration: item.duration}
       var rendered = Mustache.render(template, params)
       resultsHTML += rendered
     })
@@ -946,10 +946,11 @@ PeerTunes.prototype.doSongSearch = function() {
 
     $('.song-search-result').click(function (e){
       $(this).addClass('active')
-      var source = 'YOUTUBE' //TODO: get source from current search type
+      var source = 'YOUTUBE' //TODO: get source from current search type (only YT for now)
       var id = $(this).data('id')
       var title = $(this).data('title')
-      var meta = {title: title, id: id, source: source}
+      var duration = $(this).data('duration')
+      var meta = {title: title, id: id, source: source, duration: duration}
       self.songQueue.addSong(meta)
     })
   })

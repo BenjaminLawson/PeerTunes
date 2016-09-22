@@ -6,10 +6,37 @@ module.exports = (function () {
   //private
   
   var config = {
-    apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY' // YouTube data api key
+    apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY', // YouTube data api key
+    maxResults: 30
   }
 
   var baseURL = 'https://www.googleapis.com/youtube/v3/'
+
+  function secondsFromISODuration (duration) {
+    return moment.duration(duration).asSeconds()
+  }
+
+  function getBatchVideoMeta (ids, callback) {
+    var idList = ids.join(',')
+    var query = {
+      'part': 'snippet,contentDetails',
+      id: idList,
+      'key': config.apiKey
+    }
+    var apiQuery = baseURL + 'videos?' + queryString.stringify(query)
+    $.getJSON(apiQuery, function (result) {
+      console.log('Batch video meta result: ', result)
+      var videos = result.items.map(function (item) {
+        return {
+          title: item.snippet.title,
+          id: item.id,
+          duration: secondsFromISODuration(item.contentDetails.duration)
+        }
+      })
+      
+      callback(videos)
+    })
+  }
 
   //public
   return {
@@ -24,41 +51,39 @@ module.exports = (function () {
       //TODO: use queryString
 
       var apiQuery = baseURL + 'videos?id=' + id + '&key=' + config.apiKey + '&part=snippet,contentDetails'
-      var firstResult, ISODuration
+      console.log('YT API query: ', apiQuery)
 
-      //console.log('YT API query: ', apiQuery)
       $.getJSON(apiQuery, function (result) {
-        //console.log('YT API Result: ', result)
-        firstResult = result.items[0]
+        console.log('YT API Result: ', result)
+        var firstResult = result.items[0]
         meta.title = firstResult.snippet.title
         meta.description = firstResult.snippet.description
-        // YouTube gives duration in ISO format, need to convert to milliseconds
-        ISODuration = firstResult.contentDetails.duration
-        meta.duration = moment.duration(ISODuration).asSeconds()
+        // YouTube gives duration in ISO format, need to convert
+        meta.duration = secondsFromISODuration(firstResult.contentDetails.duration)
         callback(meta)
       })
     },
     //TODO: thumbnails
     getSearchResults: function (search, callback) {
+      //TODO: only get ids, then get details from batch query
       var query = {
-        'part': 'snippet',
-        'maxResults': 30,
+        'part': 'id',
+        'maxResults': config.maxResults,
         'q': search,
         'type': 'video',
         'videoDefinition': 'any',
         'videoEmbeddable': true,
-        'fields': 'items(id,snippet(thumbnails/standard,title))',
         'key': config.apiKey
       }
       var apiQuery = baseURL + 'search?' + queryString.stringify(query)
-      //console.log('YT Search API query: ', apiQuery)
+      console.log('YT Search API query: ', apiQuery)
 
       $.getJSON(apiQuery, function (result) {
-        ///console.log('YT Search API Result: ', result)
+        console.log('YT Search API Result: ', result)
         result = result.items.map(function (item) {
-          return {id: item.id.videoId, title: item.snippet.title}
+          return item.id.videoId
         })
-        callback(result)
+        getBatchVideoMeta(result, callback)
       })
     }
   }

@@ -34,18 +34,16 @@ function Queue (config) {
     var file = files[0]
     var key = file.name
 
-    //TODO: use this
-    console.log(SongDuration)
-    SongDuration.get(file, function (duration) {
-    	console.log('Duration of just added song: ', duration)
-    })
+
 
 
 
     console.log('Reading tags')
 
     self.tagReader.tagsFromFile(file, function(tags) {
-      self.addSong({title: tags.combinedTitle, source: 'MP3', id: key})
+    	SongDuration.get(file, function (duration) {
+	    	self.addSong({title: tags.combinedTitle, source: 'MP3', id: key, duration: duration})
+	    })
     })
 
     // store files in localstorage so they can be seeded in future
@@ -71,6 +69,7 @@ Queue.prototype.front = function () {
   if (queueSize > 0) {
     var $top = $items.first()
     var song = {id: $top.data('id'), source: $top.data('source'), title: $top.data('title')}
+    console.log('Front of queue: ', song)
     return song
   }
   return null
@@ -88,9 +87,17 @@ Queue.prototype.addSong = function (meta) {
 
 //like addSong, but doesn't save
 Queue.prototype.appendSong = function (meta) {
+	var durationString = this.prettyDuration(meta.duration)
+
 	var template = this.$itemTemplate.html()
   Mustache.parse(template)
-  var params = {title: meta.title,source: meta.source, id: meta.id}
+  var params = {
+  	title: meta.title, 
+  	source: meta.source, 
+  	id: meta.id, 
+  	duration: meta.duration, 
+  	prettyDuration: durationString
+  }
   this.$songQueue.append(Mustache.render(template, params))
 }
 
@@ -101,14 +108,20 @@ Queue.prototype.saveToLocalStorage = function () {
     var title = $(this).data('title')
     var source = $(this).data('source')
     var id = $(this).data('id')
-    queue.push({title: title, source: source, id: id})
+    var duration = $(this).data('duration')
+
+    queue.push({
+    	title: title, 
+    	source: source, 
+    	id: id, 
+    	duration: duration
+    })
   })
+
   var queueJSON = {queue: queue}
   //console.log('saving queue to localstorage:', queueJSON)
-  localforage.setItem(this.localstorageKey, queueJSON).then(function () {
-    return localforage.getItem('queue')
-  }).then(function (value) {
-    //console.log('Queue saved to localstorage')
+  localforage.setItem(this.localstorageKey, queueJSON).then(function (value) {
+    console.log('Queue saved')
   }).catch(function (err) {
     console.log('Error saving queue: ', err)
   })
@@ -137,6 +150,18 @@ Queue.prototype.restore = function () {
   this.getFromLocalStorage(function (queue) {
     self.setFromArray(queue)
   })
+}
+
+Queue.prototype.prettyDuration = function (duration) {
+	var momentDuration =  moment.duration(duration, 'seconds')
+	var seconds = momentDuration.seconds()
+	var minutes = momentDuration.minutes()
+	var hours = momentDuration.hours()
+
+	var pretty = minutes + ':' + seconds
+	if (hours > 0) pretty = hours + ':' + pretty
+
+	return pretty
 }
 
 
