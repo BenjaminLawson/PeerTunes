@@ -53,9 +53,9 @@ function PeerTunes (config) {
   this.tagReader = new TagReader()
 
   this.host = { // room data used by host
-    meta: {title: 'Untitled'},
-    guests: [], // client connections
-    djQueue: [], // array of DJ's in queue
+    meta: {title: 'Untitled'}, //room title
+    guests: [], // peers subscribed to room
+    djQueue: [], //peers in dj wait list
     rating: 0, //total, updated on new vote or vote change
     votes: {} //{peer: value}, keep track of past votes so total rating can be adjusted if guest changes vote
   }
@@ -71,6 +71,7 @@ function PeerTunes (config) {
     	callback = callback.bind(self)
 
       //call song timeout if it wasn't called already
+      //TODO: doesn't work if mp3 joined part way because timeout not set
       self.doSongTimeout()
 
       this.currentlyPlaying = data
@@ -109,22 +110,28 @@ function PeerTunes (config) {
           $('#vid2').removeClass('hide')
           $('#vid1').addClass('hide')
 
-          // if not this user's mp3, download from peers
-          if (data.infoHash) {
+          if (data.infoHash) { // is not this user's mp3 => download from peers
             console.log('Song has infoHash, leeching')
             self.removeLastTorrent()
             //TODO: callback not being called for long time if MP3 is long
             //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
             //once it starts, it is fast
             //instant when guest downloads from host
+            self.currentTorrentID = data.infoHash
             var tr = self.torrentClient.add(data.infoHash, function (torrent) {
-            	self.currentTorrentID = torrent.infoHash
               var file = torrent.files[0]
               console.log('started downloading file: ', file)
               file.renderTo('#vid2_html5_api')
-              this.player.currentTime(time / 1000) // milliseconds -> seconds
+              //TODO: setting current time doesn't work- wait until metadata loaded?
+              //this.player.currentTime(time / 1000)
               this.player.play()
-            // PT.song.startTime = new Date()
+
+              //TODO: fix this hack
+              //var hackDelay = 110
+              //setTimeout(function(){ self.song.player.currentTime((time+hackDelay) / 1000)}, hackDelay)
+
+              //this.player.currentTime(time / 1000) // milliseconds -> seconds
+              // PT.song.startTime = new Date()
             }.bind(this)) //song object context
             /*
             tr.on('download', function (bytes) {
@@ -135,6 +142,12 @@ function PeerTunes (config) {
 						})
             */
             //add cover to player as soon as download is done
+            tr.on('warning', function (err) {
+              console.log('torrent warning: ', err)
+            })
+            tr.on('metadata', function () {
+              console.log('torrent metadata loaded')
+            }.bind(this))
             tr.on('done', function(){
               console.log('torrent finished downloading');
               var file = tr.files[0].getBlob(function (error, blob) {
@@ -254,7 +267,7 @@ PeerTunes.prototype.init = function () {
   this.torrentClient = new WebTorrent({
     tracker: {
       rtcConfig: self.config.rtc,
-      announce: ['wss://tracker.webtorrent.io','wss://tracker.openwebtorrent.com','wss://tracker.btorrent.xyz']
+      announce: ['wss://tracker.openwebtorrent.com','wss://tracker.btorrent.xyz','wss://tracker.webtorrent.io']
     }
   })
 
@@ -659,7 +672,6 @@ PeerTunes.prototype.playNextDJSong = function () {
     // host is first in dj queue
     if (this.isDJ) {
       console.log('Host (you) is the next DJ')
-      this.isDJ = true
 
       var media = this.songQueue.front()
 
@@ -673,6 +685,7 @@ PeerTunes.prototype.playNextDJSong = function () {
       this.song.startTime = now
 
       if (media.source === 'MP3') {
+        //TODO: wait until metadata is loaded => send duration
         // start seeding file to guests
         this.seedFileWithKey(media.id, function (torrent) {
           media.infoHash = torrent.infoHash
@@ -683,7 +696,7 @@ PeerTunes.prototype.playNextDJSong = function () {
       else this.broadcastToRoom({msg: 'song', value: media, dj: this.username, startTime: now}, null)
     }else { // host is not first in queue
       // ask front dj for song
-      //TODO: timeout before skipping this dj if he doesn't respond
+      //TODO: set timeout for skipping this dj if he doesn't respond
       this.host.djQueue[0].send(JSON.stringify({msg: 'queue-front'}))
     }
 
@@ -780,8 +793,6 @@ PeerTunes.prototype.setPlayerCover = function (cover) {
     $('#vid2 .vjs-poster').css('background-image','url('+cover+')')
     this.song.player.posterImage.show()
   }
-
-
 }
 
 PeerTunes.prototype.setPlayerVolume = function (volume) {
@@ -851,6 +862,7 @@ PeerTunes.prototype.cleanupPeer = function (peer) {
   }
 }
 
+//callback when seeding finished setting up
 PeerTunes.prototype.seedFileWithKey = function (key, callback) {
   var self = this
 

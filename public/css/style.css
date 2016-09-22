@@ -152,6 +152,16 @@ body {
   overflow-y: scroll;
 }
 
+.queue-item-controls {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+}
+
+.queue-item {
+  padding-right: 23px;
+}
+
 /* Song Search */
 #song-search-result-right {
   position: absolute;

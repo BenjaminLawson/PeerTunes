@@ -1,7 +1,13 @@
 <script id="queueItemTmpl" type="x-tmpl-mustache">
 	<li class="list-group-item queue-item" data-source="{{ source }}" data-id="{{ id }}" data-title="{{ title }}">
-		<span class="badge">{{ source }}</span>
-		{{ title }}
+		<div>{{ title }}</div>
+		<small>{{ source }} - 1:23</small>
+		<div class="queue-item-controls">
+			<ul class="list-unstyled">
+				<li><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></li>
+				<li><span class="glyphicon glyphicon-menu-up" aria-hidden="true"></span></li>
+			</ul>
+		</div>
 	</li>
 </script>
 
