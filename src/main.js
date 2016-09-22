@@ -39,6 +39,10 @@ TODO: friend people based on ip address and username
 TODO: export/import data (playlist, mp3s, friends)
 TODO: store export/state into dropbox, etc. with api?
 TODO: dj queue view
+
+TODO: use revokeObjectURL
+https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL
+to free up memory
 */
 
 var PeerTunes = require('./modules/peertunes')

@@ -4,7 +4,10 @@
 var localforage = require('localforage')
 var Mustache = require('mustache')
 var dragDrop = require('drag-drop')
+
+//modules
 var TagReader = require('./tag-reader')
+var SongDuration = require('./song-duration')
 
 module.exports = Queue
 
@@ -30,6 +33,13 @@ function Queue (config) {
     // console.log('Here are the dropped files', files)
     var file = files[0]
     var key = file.name
+
+    //TODO: use this
+    console.log(SongDuration)
+    SongDuration.get(file, function (duration) {
+    	console.log('Duration of just added song: ', duration)
+    })
+
 
 
     console.log('Reading tags')

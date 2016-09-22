@@ -168,7 +168,9 @@ function PeerTunes (config) {
               // from the offline store.
               var file = new File([value], id, {type: 'audio/mp3', lastModified: Date.now()})
 
+              //TODO: revoke object url
               var url = window.URL.createObjectURL(file)
+
               //console.log('file: ', file)
               //console.log('file url: ', url)
               self.song.player.src({ type: 'audio/mp3', src: url })
