@@ -208,7 +208,11 @@ function onPeer (peer) {
               self.seedFileWithKey(queueFront.id, function (torrent) {
                 self.currentTorrentID = torrent.infoHash
                 queueFront.infoHash = torrent.infoHash
-                self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront}))
+
+                //TODO: fix this hack - seed ready callback doesn't seem to be working
+                //delay necessary to ensure seeding has actually started
+                setTimeout(function(){ self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront})) }, 100)
+
               })
             } else {
               self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront}))

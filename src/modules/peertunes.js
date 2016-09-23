@@ -123,8 +123,8 @@ function PeerTunes (config) {
             self.removeLastTorrent()
             //TODO: callback not being called for long time if MP3 is long
             //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
-            //once it starts, it is fast
-            //instant when guest downloads from host
+            //instant when guest downloads from host- what's different?
+            //maybe always seed song at top of queue
             self.currentTorrentID = data.infoHash
             var tr = self.torrentClient.add(data.infoHash, function (torrent) {
               var file = torrent.files[0]
@@ -154,6 +154,9 @@ function PeerTunes (config) {
             tr.on('metadata', function () {
               console.log('torrent metadata loaded')
             }.bind(this))
+            tr.on('noPeers', function (announceType) {
+              console.log('torrent has no peers from source ',announceType)
+            })
             tr.on('done', function(){
               console.log('torrent finished downloading');
               var file = tr.files[0].getBlob(function (error, blob) {
@@ -277,6 +280,13 @@ PeerTunes.prototype.init = function () {
       rtcConfig: self.config.rtc,
       announce: ['wss://tracker.openwebtorrent.com','wss://tracker.btorrent.xyz','wss://tracker.webtorrent.io']
     }
+  })
+
+  this.torrentClient.on('torrent', function (torrent) {
+    console.log('[Torrent client] torrent ready: ', torrent)
+  })
+  this.torrentClient.on('error', function (err) {
+    console.log('[Torrent client] error: ', err)
   })
 
   // set up handlers
@@ -738,10 +748,11 @@ PeerTunes.prototype.setSongTimeout = function () {
   var durationInMilliseconds = this.song.meta.duration * 1000 // seconds -> milliseconds
   this.song.timeout = setTimeout(function () {
       self.songTimeout()
-  }, durationInMilliseconds) 
+  }, durationInMilliseconds)
 }
 
 //executes before next song, or after last song
+//TODO: getting called immediately for mp3s?
 PeerTunes.prototype.songTimeout = function () {
   var self = this
 
@@ -876,8 +887,7 @@ PeerTunes.prototype.cleanupPeer = function (peer) {
 //callback when seeding finished setting up
 PeerTunes.prototype.seedFileWithKey = function (key, callback) {
   var self = this
-
-  console.log('Seeding file with key ', key)
+  //console.log('Seeding file with key ', key)
   localforage.getItem(key).then(function (value) {
     // This code runs once the value has been loaded
     // from the offline store.
@@ -886,8 +896,7 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
 
     self.removeLastTorrent()
     self.torrentClient.seed(file, function (torrent) {
-      //console.log('Client is seeding ' + torrent.magnetURI)
-      //console.log('infoHash: ', torrent.infoHash)
+      console.log('Client is seeding ' + key)
       self.currentTorrentID = torrent.infoHash
       callback(torrent)
     })
