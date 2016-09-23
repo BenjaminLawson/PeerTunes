@@ -70,6 +70,8 @@ function PeerTunes (config) {
     play: function (data, time, callback) { // time in milliseconds, callback on metadata available
     	callback = callback.bind(self)
 
+      console.log()
+
       //call song timeout if it wasn't called already
       //TODO: doesn't work if mp3 joined part way because timeout not set
       self.doSongTimeout()
@@ -77,17 +79,12 @@ function PeerTunes (config) {
       this.currentlyPlaying = data
       var id = data.id
       var source = data.source
+      var duration = data.duration
       console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
       console.log('play data: ', data)
 
       if (data.title) {
         self.setPlayerTitle(data.title)
-      }
-
-      //TODO: use this instead of youtube meta callback
-      //get overridden
-      if (data.duration) {
-        this.meta.duration = data.duration
       }
 
       switch (source) {
@@ -101,6 +98,7 @@ function PeerTunes (config) {
           $('#vid2').addClass('hide')
           $('#vid1').removeClass('hide')
 
+          //TODO: use data.duration/title instead
           YT.getVideoMeta(id, function (meta) {
             console.log('Got YouTube video metadata: ', meta)
             self.song.meta = meta
@@ -110,6 +108,10 @@ function PeerTunes (config) {
           break
         case 'MP3':
           this.player = self.player.audio
+          this.meta = {
+            id: id,
+            duration: duration
+          }
           this.meta.id = id
 
           // show only audio player
@@ -131,13 +133,11 @@ function PeerTunes (config) {
               //TODO: setting current time doesn't work- wait until metadata loaded?
               //this.player.currentTime(time / 1000)
               this.player.play()
+              if (callback) callback()
 
               //TODO: fix this hack
-              //var hackDelay = 110
-              //setTimeout(function(){ self.song.player.currentTime((time+hackDelay) / 1000)}, hackDelay)
-
-              //this.player.currentTime(time / 1000) // milliseconds -> seconds
-              // PT.song.startTime = new Date()
+              var hackDelay = 120
+              setTimeout(function(){ self.song.player.currentTime((time+hackDelay) / 1000)}, hackDelay)
             }.bind(this)) //song object context
             /*
             tr.on('download', function (bytes) {
@@ -189,7 +189,7 @@ function PeerTunes (config) {
               })
 
 
-              // TODO: only called first time- fix
+              //TODO: get duration from queue-item instead
               self.song.player.one('loadedmetadata', function () {
                 console.log('player mp3 metadata loaded')
                 self.song.meta = {
@@ -301,7 +301,7 @@ PeerTunes.prototype.init = function () {
 
         //TODO: don't use player duration (since unknown for mp3s being leeched)
         player.on('timeupdate', function () {
-          console.log('time:', this.currentTime(), ' / ', self.song.meta.duration)
+          //console.log('time:', this.currentTime(), ' / ', self.song.meta.duration)
           //self.updateProgress(this.currentTime()/this.duration())
           self.updateProgress(this.currentTime()/self.song.meta.duration)
         })

@@ -110,12 +110,17 @@ Queue.prototype.appendSong = function (meta) {
   this.$songQueue.append($renderedSong)
 
   $renderedSong.find('.song-remove').click(function(e) {
-  	console.log('Song remove clicked')
-  	//(this).closest('.queue-item').remove()
+  	//console.log('Song remove clicked')
   	$renderedSong.remove()
   	self.saveToLocalStorage()
   	//TODO: remove mp3 files from localstorage
   })
+  $renderedSong.find('.song-top-control').click(function(e) {
+  	//console.log('Song top clicked')
+  	$renderedSong.detach().prependTo(self.$songQueue)
+  	self.saveToLocalStorage()
+  })
+
 }
 
 Queue.prototype.saveToLocalStorage = function () {
@@ -138,7 +143,7 @@ Queue.prototype.saveToLocalStorage = function () {
   var queueJSON = {queue: queue}
   //console.log('saving queue to localstorage:', queueJSON)
   localforage.setItem(this.localstorageKey, queueJSON).then(function (value) {
-    console.log('Queue saved')
+    //console.log('Queue saved')
   }).catch(function (err) {
     console.log('Error saving queue: ', err)
   })
