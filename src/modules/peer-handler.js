@@ -216,13 +216,13 @@ function onPeer (peer) {
             break
           case 'song':
             if (self.isHost) {
-              // request song answer from guest
-              // verify dj is at front of queue
-              // TODO: prevent front dj from repeatedly submitting songs
+              //TODO: prevent front dj from repeatedly submitting songs
+              //TODO: check data types
+              //verify dj is at front of queue
               if (peer === self.host.djQueue[0]) {
                 // don't start playing video until callback
 
-                var songInfo = {id: data.value.id, source: data.value.source}
+                var songInfo = {id: data.value.id, source: data.value.source, duration: data.value.duration}
                 if (data.value.infoHash) {
                   songInfo.infoHash = data.value.infoHash
                   self.song.infoHash = data.value.infoHash
@@ -258,7 +258,7 @@ function onPeer (peer) {
             self.vote = 0
             self.rating = 0
 
-            var songInfo = {id: data.value.id, source: data.value.source}
+            var songInfo = {id: data.value.id, source: data.value.source, duration: data.value.duration}
 
             if (data.value.source === 'MP3') {
               songInfo.title = data.value.title

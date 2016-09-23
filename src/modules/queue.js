@@ -1,5 +1,6 @@
 // Queue
-//TODO: cache selectors & use
+
+//TODO: lock top song while DJ
 
 var localforage = require('localforage')
 var Mustache = require('mustache')
@@ -68,7 +69,12 @@ Queue.prototype.front = function () {
   var queueSize = $items.length
   if (queueSize > 0) {
     var $top = $items.first()
-    var song = {id: $top.data('id'), source: $top.data('source'), title: $top.data('title')}
+    var song = {
+    	id: $top.data('id'), 
+    	source: $top.data('source'), 
+    	title: $top.data('title'),
+    	duration: $top.data('duration')
+    }
     console.log('Front of queue: ', song)
     return song
   }
@@ -87,6 +93,8 @@ Queue.prototype.addSong = function (meta) {
 
 //like addSong, but doesn't save
 Queue.prototype.appendSong = function (meta) {
+	var self = this
+
 	var durationString = this.prettyDuration(meta.duration)
 
 	var template = this.$itemTemplate.html()
@@ -98,7 +106,16 @@ Queue.prototype.appendSong = function (meta) {
   	duration: meta.duration, 
   	prettyDuration: durationString
   }
-  this.$songQueue.append(Mustache.render(template, params))
+  var $renderedSong = $(Mustache.render(template, params))
+  this.$songQueue.append($renderedSong)
+
+  $renderedSong.find('.song-remove').click(function(e) {
+  	console.log('Song remove clicked')
+  	//(this).closest('.queue-item').remove()
+  	$renderedSong.remove()
+  	self.saveToLocalStorage()
+  	//TODO: remove mp3 files from localstorage
+  })
 }
 
 Queue.prototype.saveToLocalStorage = function () {
@@ -152,14 +169,20 @@ Queue.prototype.restore = function () {
   })
 }
 
+//TODO: pad numbers with 0's
 Queue.prototype.prettyDuration = function (duration) {
 	var momentDuration =  moment.duration(duration, 'seconds')
 	var seconds = momentDuration.seconds()
 	var minutes = momentDuration.minutes()
 	var hours = momentDuration.hours()
 
+	seconds = ('0' + seconds).slice(-2)
+
 	var pretty = minutes + ':' + seconds
-	if (hours > 0) pretty = hours + ':' + pretty
+	if (hours > 0) {
+		hours = ('0' + hours).slice(-2)
+		pretty = hours + ':' + pretty
+	}
 
 	return pretty
 }

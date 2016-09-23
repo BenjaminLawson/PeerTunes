@@ -84,6 +84,12 @@ function PeerTunes (config) {
         self.setPlayerTitle(data.title)
       }
 
+      //TODO: use this instead of youtube meta callback
+      //get overridden
+      if (data.duration) {
+        this.meta.duration = data.duration
+      }
+
       switch (source) {
         case 'YOUTUBE':
           this.player = self.player.video
@@ -293,8 +299,11 @@ PeerTunes.prototype.init = function () {
       player.on('play', function () {
         $('#video-frame').show()
 
+        //TODO: don't use player duration (since unknown for mp3s being leeched)
         player.on('timeupdate', function () {
-          self.updateProgress(this.currentTime()/this.duration())
+          console.log('time:', this.currentTime(), ' / ', self.song.meta.duration)
+          //self.updateProgress(this.currentTime()/this.duration())
+          self.updateProgress(this.currentTime()/self.song.meta.duration)
         })
       })
     })
