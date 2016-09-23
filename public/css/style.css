@@ -158,9 +158,15 @@ body {
   top: 4px;
 }
 
+.queue-item-controls span:hover {
+  color: white;
+}
+
 .queue-item {
   padding-right: 23px;
 }
+
+
 
 /* Song Search */
 #song-search-result-right {

@@ -82,7 +82,7 @@ Queue.prototype.front = function () {
 }
 
 Queue.prototype.cycle = function () {
-  this.$songQueue.find('li').first().remove().appendTo(this.songQueue)
+  this.$songQueue.find('li').first().detach().appendTo(this.songQueue)
   this.saveToLocalStorage()
 }
 
