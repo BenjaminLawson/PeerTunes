@@ -205,15 +205,14 @@ function onPeer (peer) {
             var queueFront = self.songQueue.front()
             if (queueFront.source === 'MP3') {
               //TODO: wait until metadata is loaded => send duration, since streaming doesn't support duration
+              //TODO: get infohash more effeciently (parse-torrent ?)
               self.seedFileWithKey(queueFront.id, function (torrent) {
                 self.currentTorrentID = torrent.infoHash
                 queueFront.infoHash = torrent.infoHash
-
-                //TODO: fix this hack - seed ready callback doesn't seem to be working
-                //delay necessary to ensure seeding has actually started
-                setTimeout(function(){ self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront})) }, 100)
-
+                
+                self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront}))
               })
+            
             } else {
               self.hostPeer.send(JSON.stringify({msg: 'song', value: queueFront}))
             }
@@ -270,6 +269,12 @@ function onPeer (peer) {
 
             if (data.dj === self.username) {
               self.isDJ = true
+              //causes announce message after other peers have connected
+              /*
+              self.seedFileWithKey(queueFront.id, function (torrent) {
+                console.log('Seeding for real this time')
+              })
+              */
             }else {
               // only add infoHash if not the DJ, since DJ already has file
               if (data.value.infoHash) songInfo.infoHash = data.value.infoHash

@@ -25,7 +25,7 @@ module.exports = (function () {
     }
     var apiQuery = baseURL + 'videos?' + queryString.stringify(query)
     $.getJSON(apiQuery, function (result) {
-      console.log('Batch video meta result: ', result)
+      //console.log('Batch video meta result: ', result)
       var videos = result.items.map(function (item) {
         return {
           title: item.snippet.title,
@@ -51,10 +51,10 @@ module.exports = (function () {
       //TODO: use queryString
 
       var apiQuery = baseURL + 'videos?id=' + id + '&key=' + config.apiKey + '&part=snippet,contentDetails'
-      console.log('YT API query: ', apiQuery)
+      //console.log('YT API query: ', apiQuery)
 
       $.getJSON(apiQuery, function (result) {
-        console.log('YT API Result: ', result)
+        //console.log('YT API Result: ', result)
         var firstResult = result.items[0]
         meta.title = firstResult.snippet.title
         meta.description = firstResult.snippet.description
@@ -76,10 +76,10 @@ module.exports = (function () {
         'key': config.apiKey
       }
       var apiQuery = baseURL + 'search?' + queryString.stringify(query)
-      console.log('YT Search API query: ', apiQuery)
+      //console.log('YT Search API query: ', apiQuery)
 
       $.getJSON(apiQuery, function (result) {
-        console.log('YT Search API Result: ', result)
+        //console.log('YT Search API Result: ', result)
         result = result.items.map(function (item) {
           return item.id.videoId
         })

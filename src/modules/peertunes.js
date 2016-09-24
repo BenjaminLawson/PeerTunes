@@ -48,6 +48,7 @@ function PeerTunes (config) {
   this.isDJ = false // this peer is the dj
 
   this.player = {video: null, audio: null, preview: null} // videojs player objects
+  this.volume = 1.0
 
   this.songQueue = new SongQueue(config.songQueue)
   this.tagReader = new TagReader()
@@ -94,6 +95,9 @@ function PeerTunes (config) {
           this.player.currentTime(time / 1000) // milliseconds -> seconds
           this.player.play()
 
+          //restore volume if player changed
+          self.setPlayerVolume(self.volume)
+
           // show only video player
           $('#vid2').addClass('hide')
           $('#vid1').removeClass('hide')
@@ -113,6 +117,7 @@ function PeerTunes (config) {
             duration: duration
           }
           this.meta.id = id
+          self.setPlayerCover(null)
 
           // show only audio player
           $('#vid2').removeClass('hide')
@@ -121,21 +126,24 @@ function PeerTunes (config) {
           if (data.infoHash) { // is not this user's mp3 => download from peers
             console.log('Song has infoHash, leeching')
             self.removeLastTorrent()
-            //TODO: callback not being called for long time if MP3 is long
-            //TODO: fix the long time it takes for the host to start downloading ('ready') from the guest
-            //instant when guest downloads from host- what's different?
-            //maybe always seed song at top of queue
             self.currentTorrentID = data.infoHash
             var tr = self.torrentClient.add(data.infoHash, function (torrent) {
               var file = torrent.files[0]
               console.log('started downloading file: ', file)
               file.renderTo('#vid2_html5_api')
+
               //TODO: setting current time doesn't work- wait until metadata loaded?
               //this.player.currentTime(time / 1000)
+
               this.player.play()
+
+              //restore volume if player changed
+              self.setPlayerVolume(self.volume)
+
               if (callback) callback()
 
               //TODO: fix this hack
+              //TODO: this hack doesn't work properly
               var hackDelay = 120
               setTimeout(function(){ self.song.player.currentTime((time+hackDelay) / 1000)}, hackDelay)
             }.bind(this)) //song object context
@@ -156,6 +164,9 @@ function PeerTunes (config) {
             }.bind(this))
             tr.on('noPeers', function (announceType) {
               console.log('torrent has no peers from source ',announceType)
+            })
+            tr.on('wire', function (wire) {
+              console.log('torrent: connected to new peer')
             })
             tr.on('done', function(){
               console.log('torrent finished downloading');
@@ -185,6 +196,9 @@ function PeerTunes (config) {
               self.song.player.src({ type: 'audio/mp3', src: url })
               self.song.player.currentTime(time / 1000) // milliseconds -> seconds
               self.song.player.play()
+
+              //restore volume if player changed
+              self.setPlayerVolume(self.volume)
 
               self.tagReader.tagsFromFile(file, function (tags) {
                 self.setPlayerTitle(tags.combinedTitle)
@@ -371,6 +385,8 @@ PeerTunes.prototype.initClickHandlers = function () {
     self.doSongSearch()
   })
 
+  //TODO: breaks when switching between audio/video players
+  //doesn't stay when switching from audio->video players
   $('#bottom-bar-volume').click(function (e) {
     if (!self.song.player) return
 
@@ -430,7 +446,7 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   // join DJ queue
   this.$joinQueueButton.click(function (e) {
-    console.log('Clicked join/leave queue')
+    console.log('Clicked join/leave queue, inQueue: ', self.inQueue)
     if (!self.inQueue) {
       console.log('joined DJ queue')
       self.inQueue = true
@@ -451,10 +467,11 @@ PeerTunes.prototype.initClickHandlers = function () {
     console.log('inQueue: ', self.inQueue)
     $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
     if (self.isDJ) {
-      self.removeDJFromQueue(self.dummySelfPeer)
       self.doSongTimeout()
     }
-    if (!self.isHost) {
+    if (self.isHost) {
+      self.removeDJFromQueue(self.dummySelfPeer)
+    } else {
       //is guest, so tell host that guest is leaving
       self.hostPeer.send(JSON.stringify({msg: 'leave-queue'}))
     }
@@ -811,14 +828,18 @@ PeerTunes.prototype.setPlayerTitle = function (title) {
 
 // cover must be URL, can be blob url
 PeerTunes.prototype.setPlayerCover = function (cover) {
-  if (this.song.player != null) {
-    $('#vid2 .vjs-poster').css('background-image','url('+cover+')')
-    this.song.player.posterImage.show()
+  if (this.song.player == null) {
+    this.song.player.posterImage.hide()
+    return
   }
+  $('#vid2 .vjs-poster').css('background-image','url('+cover+')')
+  this.song.player.posterImage.show()
 }
 
+//setting uninitialized player volume doesn't work
 PeerTunes.prototype.setPlayerVolume = function (volume) {
   var players = [this.player.video, this.player.audio]
+  this.volume = volume
   players.forEach( function (player) {
     player.volume(volume)
   })
@@ -898,7 +919,20 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
     self.torrentClient.seed(file, function (torrent) {
       console.log('Client is seeding ' + key)
       self.currentTorrentID = torrent.infoHash
-      callback(torrent)
+
+      torrent.on('wire', function (wire) {
+        console.log('torrent: connected to new peer')
+      })
+
+      //TODO: fix this hack - seed ready callback is too early?
+      //or trackers take time to register peer
+      //delay necessary to increase chance seeding has started
+      //the larger the file, the longer timeout needs to be
+      //possible fix: start seeding long before song is requested (eg. always seed top song)
+
+      //BEST FIX: start leeching before seeding, then start seeding (triggers announce event)
+      //another possible fix: use addPeer
+      setTimeout(function(){ callback(torrent) }, 100)
     })
   }).catch(function (err) {
     // This code runs if there were any errors
