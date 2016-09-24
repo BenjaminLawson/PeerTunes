@@ -62,3 +62,5 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - corp.beatrobo.com [Website shut down, now iOS only]($1.7 million funding)
  - ~~Mixify.com~~ [Shut down / merged]
  - beatsense.com
+ - ~~Grooveshark broadcast~~ [Shutdown due to lawsuit]
+ - beatsense.com

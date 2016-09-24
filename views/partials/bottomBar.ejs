@@ -1,8 +1,18 @@
 <div id="bottom-bar">
-	<h6 id="song-title"></h6>
-	<div id="song-progress" class="progress">
-  		<div id="song-progress-bar" class="progress-bar progress-bar-default" role="progressbar" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
-  		</div>
+	<div id="bottom-bar-cover" class="pull-left">
+		
 	</div>
-	<span id="bottom-bar-volume" class="glyphicon glyphicon-volume-up cursor-pointer" aria-hidden="true"></span>
+	<div id="song-details" class="pull-left">
+		<h6 id="song-title"></h6>
+		<div id="song-progress" class="progress">
+  			<div id="song-progress-bar" class="progress-bar progress-bar-default" role="progressbar" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+		</div>
+	</div>
+	<div id="song-progress-text" class="pull-left">
+		<strong><span id="song-time-current">00:00</span></strong>
+	</div>
+	<div id="bottom-bar-volume" class="pull-left vertical-align">
+		<span id="volume-button" class="glyphicon glyphicon-volume-up cursor-pointer" aria-hidden="true"></span>
+		<input type="range" id="volume-slider" value="100">
+	</div>
 </div>

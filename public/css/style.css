@@ -123,26 +123,51 @@ body {
   background-color: rgba(27,27,27,0.8);
 }
 
+#bottom-bar-cover {
+  width: 46px;
+  height: 100%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+  /* background-image: url(http://www.designformusic.com/wp-content/uploads/2015/10/insurgency-digital-album-cover-design.jpg); */
+}
+
+#song-details {
+  position: relative;
+  height: 100%;
+  width: 70%;
+  padding: 0 10px 0 10px;
+}
+
 #song-title {
   position: absolute;
-  top: 0px;
-  left: 2%;
+  width: 90%;
 }
 
 #song-progress {
-  width: 72%;
   position: relative;
   top: 32px;
-  left: 2%;
   height: 8px;
   margin-bottom: 0px;
 }
 
+#song-progress-text {
+  width: 6%;
+  height: 100%;
+  padding-top: 24px;
+  min-width: 75px;
+}
+
 #bottom-bar-volume {
-  position: absolute;
   font-size: 26px;
-  left: 77%;
-  top: 12px;
+  width: 10%;
+  height: 100%;
+}
+
+#volume-slider {
+  position: relative;
+  left: 10px;
+  width: 80px;
 }
 
 /* My Queue */

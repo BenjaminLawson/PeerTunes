@@ -28,7 +28,7 @@ function PeerTunes (config) {
   this.torrentClient = null
   this.currentTorrentID = null
 
-  this.isHost = false // true = this peer is a host, false = this peer is a client
+  this.isHost = false  //this peer is hosting a room
 
   this.peers = [] // peers in swarm
 
@@ -323,10 +323,11 @@ PeerTunes.prototype.init = function () {
       player.on('play', function () {
         $('#video-frame').show()
 
-        //TODO: don't use player duration (since unknown for mp3s being leeched)
         player.on('timeupdate', function () {
           //console.log('time:', this.currentTime(), ' / ', self.song.meta.duration)
-          //self.updateProgress(this.currentTime()/this.duration())
+          var ms = this.currentTime()*1000
+          var formatString = (ms >= 3600) ? 'HH:mm:ss' : 'mm:ss'
+          $('#song-time-current').text(moment.utc(ms).format(formatString))
           self.updateProgress(this.currentTime()/self.song.meta.duration)
         })
       })
@@ -381,25 +382,29 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   console.log('initializing click handlers')
 
+  $('#volume-slider').on('change mousemove', function() {
+    var volume = $(this).val()/100
+    self.setPlayerVolume($(this).val()/100)
+  })
+
   $('#song-search-submit-button').click(function(e) {
     self.doSongSearch()
   })
 
   //TODO: breaks when switching between audio/video players
   //doesn't stay when switching from audio->video players
-  $('#bottom-bar-volume').click(function (e) {
+  $('#volume-button').click(function (e) {
     if (!self.song.player) return
 
     //not muted
     if (self.song.player.volume() > 0) {
-      $(this).removeClass('glyphicon-volume-up').addClass('glyphicon-volume-off')
       self.setPlayerVolume(0.0)
+      $('#volume-slider').val(0)
       return
     }
     //muted
-    $(this).removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up')
-    //TODO: restore last volume
     self.setPlayerVolume(1.0)
+    $('#volume-slider').val(100)
     
   })
 
@@ -843,6 +848,13 @@ PeerTunes.prototype.setPlayerVolume = function (volume) {
   players.forEach( function (player) {
     player.volume(volume)
   })
+
+  var $volumeButton = $('#volume-button')
+  if (this.volume === 0) {
+    $volumeButton.removeClass('glyphicon-volume-up').addClass('glyphicon-volume-off')
+  } else {
+    $volumeButton.removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up')
+  }
 }
 
 // HOST function
