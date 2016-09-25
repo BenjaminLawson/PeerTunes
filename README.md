@@ -1,5 +1,9 @@
 # PeerTunes
 PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take turns playing songs and rate and chat about them. 
+
+Distribution mirrors:
+https://benlawson.bitbucket.io/peertunes/
+
 ### Development
  - Automatically build changes to src/main.js : `npm run-script watch`
  - Start local web server: `npm start`
@@ -12,7 +16,7 @@ PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take
  - Business model shown to be unprofitable time and time again
  - Websites keep popping up and shutting down, this will be perminant
 ### Features
- - $0 to host (static files => host on IPFS, gh-pages, dropbox, etc.)
+ - $0 to host (static files => host on IPFS, gh-pages, bitbucket.io, dropbox, etc.)
  - YouTube video support
  - YouTube search
  - Chat with full emoji support
