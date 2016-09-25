@@ -34,7 +34,7 @@ PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take
  - Profiles (ask peer for info about themself)
  - custom backgrounds set by host (upload to imgur)
  - custom avatars set by user (upload to imgur)
- - moderation controls (kick, ban, skip, etc.)
+ - moderation controls (kick, ban, skip, max song length, max room size, etc.)
  - Advanced player controls (quality, refresh, hide video, etc.)
 ### Problems
  - Can't have persistant rooms
@@ -55,7 +55,7 @@ https://www.reddit.com/r/dubtrack/comments/4qqca0/can_dubtrack_devs_please_make_
  
  - Plug.dj ($1.25M seed funding) [Bankrupt, then bought out & resurrected, popular]
  - Soundtrack.io [No users, open-source]
- - Jukebox.today [No users]
+ - Jukebox.today
  - musiqpad.com [open-source, decentralized rooms, the next best thing!]
  - ~~rolling.fm~~ [Offline]
  - ~~Qus~~ (mobile) [Shut down by streaming services]
@@ -75,6 +75,8 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - ~~turn.fm~~ [Vaporware]
  - ~~spinit.fm~~ [Vaporware]
  - totem.fm [Broken & abandoned?, front end open source]
- - blog.bonsai.fm [Vaporware?]
+ - blog.bonsai.fm [Open source, abandoned?]
  - https://github.com/aportner/opentt [Open source, not hosted]
  - https://github.com/calzoneman/sync [Open source, several hosted instances]
+ - ~~listeningroom.net~~ [Shut down]
+ - ~~Outloud.fm~~ [Shut down]
