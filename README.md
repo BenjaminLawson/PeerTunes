@@ -1,5 +1,5 @@
 # PeerTunes
-PeerTunes is a Peer-to-Peer social music experience for the browser.
+PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take turns playing songs and rate and chat about them. 
 ### Development
  - Automatically build changes to src/main.js : `npm run-script watch`
  - Start local web server: `npm start`
@@ -19,18 +19,19 @@ PeerTunes is a Peer-to-Peer social music experience for the browser.
  - Persistent song queue
  - Public room listing
  - Basic player info/controls
+ - Basic song queue organizer
 ### Planned
  - Persistant playlists
  - Playlists
  - Advanced media search/upload
  - Soundcloud support
- - Scuttlebutt/Grapevine model
- - Friend system using RSA keys
- - Profiles
- - custom backgrounds set by host
- - custom avatars
+ - Scuttlebutt/Grapevine model to support more users
+ - Friend system using RSA keys (exchange public keys, then have potential friend sign to confirm identity)
+ - Profiles (ask peer for info about themself)
+ - custom backgrounds set by host (upload to imgur)
+ - custom avatars set by user (upload to imgur)
  - moderation controls (kick, ban, skip, etc.)
- - Advanced player controls
+ - Advanced player controls (quality, refresh, hide video, etc.)
 ### Problems
  - Can't have persistant rooms
  - Can't store points (without trusting client)
@@ -63,4 +64,10 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - ~~Mixify.com~~ [Shut down / merged]
  - beatsense.com
  - ~~Grooveshark broadcast~~ [Shutdown due to lawsuit]
- - beatsense.com
+ - juqster.com
+ - lifeboatradio.com [bare bones]
+ - 4ever.tv
+ - ~~turn.fm~~ [Vaporware]
+ - ~~spinit.fm~~ [Vaporware]
+ - totem.fm [Broken & abandoned?, front end open source]
+ - blog.bonsai.fm [Vaporware?]

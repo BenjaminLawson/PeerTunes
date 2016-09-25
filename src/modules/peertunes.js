@@ -242,6 +242,7 @@ function PeerTunes (config) {
   this.$likeButton = $(config.selectors.likeButton)
   this.$dislikeButton = $(config.selectors.dislikeButton)
   this.$joinQueueButton = $(config.selectors.joinQueueButton)
+  this.$volumeSlider = $(config.selectors.volumeSlider)
 }
 
 PeerTunes.prototype.init = function () {
@@ -382,7 +383,7 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   console.log('initializing click handlers')
 
-  $('#volume-slider').on('change mousemove', function() {
+  this.$volumeSlider.on('change mousemove', function() {
     var volume = $(this).val()/100
     self.setPlayerVolume($(this).val()/100)
   })
@@ -399,12 +400,12 @@ PeerTunes.prototype.initClickHandlers = function () {
     //not muted
     if (self.song.player.volume() > 0) {
       self.setPlayerVolume(0.0)
-      $('#volume-slider').val(0)
+      self.$volumeSlider.val(0)
       return
     }
     //muted
     self.setPlayerVolume(1.0)
-    $('#volume-slider').val(100)
+    self.$volumeSlider.val(100)
     
   })
 
@@ -472,7 +473,8 @@ PeerTunes.prototype.initClickHandlers = function () {
     console.log('inQueue: ', self.inQueue)
     $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
     if (self.isDJ) {
-      self.doSongTimeout()
+      //self.doSongTimeout()
+      self.isDJ = false
     }
     if (self.isHost) {
       self.removeDJFromQueue(self.dummySelfPeer)
@@ -710,7 +712,7 @@ PeerTunes.prototype.playNextDJSong = function () {
   if (this.host.djQueue[0] === this.dummySelfPeer) this.isDJ = true
 
   console.log('play next DJ, isDJ: ', this.isDJ)
-
+  console.log('Play next DJ from queue with length ', this.host.djQueue.length)
   if (this.host.djQueue.length > 0) {
     // host is first in dj queue
     if (this.isDJ) {
@@ -787,6 +789,9 @@ PeerTunes.prototype.songTimeout = function () {
   this.setPlayerTitle('')
   //this.updateProgress(0) //gets overridden :(
 
+  console.log('Songtimeout queue length: ', this.host.djQueue.length)
+
+  console.log('songtimeout isDJ: ', this.isDJ)
   if (this.isDJ) {
     endDJ()
   }
@@ -794,8 +799,7 @@ PeerTunes.prototype.songTimeout = function () {
   if (this.isHost) {
     //host is current DJ
     //if (this.host.djQueue[0] === this.dummySelfPeer) endDJ()
-
-    if (this.host.djQueue > 0) {
+    if (this.host.djQueue.length > 0) {
       console.log('Shifting queue:', this.host.djQueue)
       var front = this.host.djQueue.shift()
       this.host.djQueue.push(front)
@@ -861,9 +865,11 @@ PeerTunes.prototype.setPlayerVolume = function (volume) {
 PeerTunes.prototype.addDJToQueue = function (peer) {
   console.log('Adding ', peer.username, ' to DJ queue')
 
+  console.log('DJ queue length before: ', this.host.djQueue.length)
+
   this.host.djQueue.push(peer)
 
-  console.log('DJ queue length: ', this.host.djQueue.length)
+  console.log('DJ queue length after: ', this.host.djQueue.length)
 
   // the queue was empty before, so play the new DJ's song
   if (this.host.djQueue.length === 1) {
@@ -872,17 +878,19 @@ PeerTunes.prototype.addDJToQueue = function (peer) {
 }
 
 // HOST function
+//TODO: fix next song playing when leaving queue
 PeerTunes.prototype.removeDJFromQueue = function (peer) {
   console.log('Removing DJ from queue:', peer.username)
+  console.log('DJ queue length: ', this.host.djQueue.length)
   console.log('Queue before:', this.host.djQueue)
   var index = this.host.djQueue.indexOf(peer)
   if (index > -1) {
     this.host.djQueue.splice(index, 1)
-    if (index == 0) { //removed dj was currently playing dj
+    if (index === 0) { //removed dj was currently playing dj
       // check if the dj that left was the only dj
       if (this.host.djQueue.length === 0) {
         console.log('removed dj was last dj => ending song')
-        this.song.end()
+        this.doSongTimeout()
         this.broadcastToRoom({msg: 'end-song'})
       }
     }
