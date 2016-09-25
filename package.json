@@ -24,6 +24,7 @@
     "ncp": "^2.0.0",
     "query-string": "^4.2.3",
     "simple-peer": "^6.0.7",
+    "uglify-js": "^2.7.3",
     "uglifyify": "^3.0.3",
     "video.js": "^5.11.6",
     "videojs-youtube": "^2.1.0",
