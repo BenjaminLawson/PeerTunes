@@ -7,6 +7,10 @@ PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take
  - Users join bittorrent swarm where peers announce rooms
  - Users subscribe to room updates from host peer
  - Host peer processes and relays messages among room peers
+### Why
+ - Hosting this type of real-time service with the client-server design is EXPENSIVE
+ - Business model shown to be unprofitable time and time again
+ - Websites keep popping up and shutting down, this will be perminant
 ### Features
  - $0 to host (static files => host on IPFS, gh-pages, dropbox, etc.)
  - YouTube video support
@@ -35,10 +39,11 @@ PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take
 ### Problems
  - Can't have persistant rooms
  - Can't store points (without trusting client)
- - Can't reserve usernames/accounts
- - Max peer connection limit (unknown)
+ - Can't reserve usernames/accounts (but can still confirm identities with keys)
+ - Max peer connection limit (unknown, possible to overcome with Scuttlebutt)
  - Max amount of peers host can support (unknown)
  - More open to abuse / security issues
+ - Uses new technology (WebRTC, MediaSource) not supported by some browsers (Chrome has everything, Firefox is missing MediaSource)
 ### Alternatives (AKA why this project needs to exist)
  - ~~TurnTable.fm~~ ($7 - 7.5M seed funding) [Bankrupt]
   https://techcrunch.com/2013/11/22/turntable-fm-shutting-down-so-company-can-focus-on-turntable-live-events-platform/
@@ -71,3 +76,5 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - ~~spinit.fm~~ [Vaporware]
  - totem.fm [Broken & abandoned?, front end open source]
  - blog.bonsai.fm [Vaporware?]
+ - https://github.com/aportner/opentt [Open source, not hosted]
+ - https://github.com/calzoneman/sync [Open source, several hosted instances]
