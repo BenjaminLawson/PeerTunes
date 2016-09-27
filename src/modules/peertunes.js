@@ -16,6 +16,7 @@ var chat = require('./chat')
 var onPeer = require('./peer-handler')
 var SongQueue = require('./queue')
 var TagReader = require('./tag-reader')
+var Player = require('./player')
 
 // TODO: add element selectors to config
 function PeerTunes (config) {
@@ -47,8 +48,8 @@ function PeerTunes (config) {
   this.inQueue = false // if this peer is in DJ queue
   this.isDJ = false // this peer is the dj
 
-  this.player = {video: null, audio: null, preview: null} // videojs player objects
-  this.volume = 1.0
+  //this.player = {video: null, audio: null, preview: null} // videojs player objects
+  //this.volume = 1.0
 
   this.songQueue = new SongQueue(config.songQueue)
   this.tagReader = new TagReader()
@@ -307,33 +308,6 @@ PeerTunes.prototype.init = function () {
   // set up handlers
   this.initClickHandlers()
 
-  this.player.video = videojs('vid1')
-  this.player.audio = videojs('vid2')
-
-  // video listeners
-  var players = [this.player.video, this.player.audio]
-  this.song.player = this.player.video //arbitrary, used so volume can be changed
-  players.forEach(function (player) {
-    player.ready(function () {
-      // automatically hide/show player when song is playing
-      player.on('ended', function () {
-        $('#video-frame').hide()
-        player.off('timeupdate')
-        //self.updateProgress(0)
-      })
-      player.on('play', function () {
-        $('#video-frame').show()
-
-        player.on('timeupdate', function () {
-          //console.log('time:', this.currentTime(), ' / ', self.song.meta.duration)
-          var ms = this.currentTime()*1000
-          var formatString = (ms >= 3600) ? 'HH:mm:ss' : 'mm:ss'
-          $('#song-time-current').text(moment.utc(ms).format(formatString))
-          self.updateProgress(this.currentTime()/self.song.meta.duration)
-        })
-      })
-    })
-  })
 
   // init Dragula in queue
   //TODO: prevent top song from being dragged if DJ
@@ -777,6 +751,13 @@ PeerTunes.prototype.setSongTimeout = function () {
 
 //executes before next song, or after last song
 //TODO: getting called immediately for mp3s?
+/*
+  types of song end reactions:
+  - host needs to manage djs
+  - users & host need to know when song ended for head bobbing, title, rating
+    queue cycling
+  - player 
+*/
 PeerTunes.prototype.songTimeout = function () {
   var self = this
 
@@ -822,11 +803,14 @@ PeerTunes.prototype.songTimeout = function () {
   }
 }
 
+/*
 PeerTunes.prototype.updateProgress = function (decimal) {
   var percent = decimal*100 + '%'
   $('#song-progress-bar').css('width',percent)
 }
+*/
 
+/*
 PeerTunes.prototype.setPlayerTitle = function (title) {
   var maxLength = 65 
   if (title.length > maxLength) {
@@ -834,7 +818,9 @@ PeerTunes.prototype.setPlayerTitle = function (title) {
   }
   $('#song-title').text(title)
 }
+*/
 
+/*
 // cover must be URL, can be blob url
 PeerTunes.prototype.setPlayerCover = function (cover) {
   if (this.song.player == null) {
@@ -844,8 +830,10 @@ PeerTunes.prototype.setPlayerCover = function (cover) {
   $('#vid2 .vjs-poster').css('background-image','url('+cover+')')
   this.song.player.posterImage.show()
 }
+*/
 
 //setting uninitialized player volume doesn't work
+/*
 PeerTunes.prototype.setPlayerVolume = function (volume) {
   var players = [this.player.video, this.player.audio]
   this.volume = volume
@@ -860,6 +848,7 @@ PeerTunes.prototype.setPlayerVolume = function (volume) {
     $volumeButton.removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up')
   }
 }
+*/
 
 // HOST function
 PeerTunes.prototype.addDJToQueue = function (peer) {
