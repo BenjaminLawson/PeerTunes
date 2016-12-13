@@ -1,41 +1,52 @@
+/*
+Must be designed so that player functions when headless
+(ie. not reliant on videojs for timing)
+*/
+
+/* Globals */
+//var $, moment, videojs
+
+// modules
+var TagReader = require('./tag-reader')
 
 module.exports = Player
 
 function Player (config) {
-	var self = this
+  var self = this
 
-	this.$audio = $(config.audio)
-	this.$video = $(config.video)
+  this.$audio = $(config.audio)
+  this.$video = $(config.video)
 
-	//init videojs
-	this.audioPlayer = videojs(config.audio)
-	this.videoPlayer = videojs(config.video)
+  // init videojs
+  this.audioPlayer = videojs(config.audio)
+  this.videoPlayer = videojs(config.video)
 
-	this.players = [this.audioPlayer, this.videoPlayer]
+  this.players = [this.audioPlayer, this.videoPlayer]
 
-	this.player = this.videoPlayer //active player, starting on video is arbitrary
+  this.player = this.videoPlayer // active player, starting on video is arbitrary
 
-	this.volume = 1 //0-1 scale
+  this.volume = 1 // 0-1 scale
 
-	this.startTime = null // start time when song started playing, sent to guests instead of current time in song
+  this.tagReader = new TagReader()
+  this.torrentClient = config.torrentClient
 
-	this.$volumeButton = $('#volume-button')
-	this.$songProgressBar = $('#song-progress-bar')
-	this.$songCurrentTime = $('#song-time-current')
+  this.$volumeButton = $('#volume-button')
+  this.$songProgressBar = $('#song-progress-bar')
+  this.$songCurrentTime = $('#song-time-current')
 
-	/*
-		currentlyPlaying
-		{
-			id: {string},
-			title: {string},
-			source: {string},
-			duration: {number} - seconds
-		}
-	*/
-	this.currentlyPlaying = null
+  /*
+    currentlyPlaying
+    {
+    id: {string},
+    title: {string},
+    source: {string},
+    duration: {number} - seconds
+    }
+  */
+  this.currentlyPlaying = null
 
-	var $videoFrame = $('#video-frame')
-	players.forEach(function (player) {
+  var $videoFrame = $('#video-frame')
+  this.players.forEach(function (player) {
     player.ready(function () {
       // automatically hide/show player when song ends/starts
       player.on('ended', function () {
@@ -46,27 +57,22 @@ function Player (config) {
       player.on('play', function () {
         $videoFrame.show()
         player.on('timeupdate', function () {
-          var ms = this.currentTime()*1000
-          //only show hours if current time is >= 1 hour
+	  var ms = this.currentTime() * 1000
+          // only show hours if current time is >= 1 hour
           var formatString = (this.currentTime() >= 3600) ? 'HH:mm:ss' : 'mm:ss'
           self.$songCurrentTime.text(moment.utc(ms).format(formatString))
-          self.updateProgress(this.currentTime()/self.currentlyPlaying.duration)
+          self.updateProgress(this.currentTime() / self.currentlyPlaying.duration)
         })
       })
     })
   })
 }
 
-Player.prototype.play = function (data, time) {
-	//time in milliseconds, callback on metadata available
-	callback = callback.bind(self)
 
-  //call song timeout if it wasn't called already
-  //TODO: doesn't work if mp3 joined part way because timeout not set
-  self.doSongTimeout()
+// time in milliseconds
+Player.prototype.play = function (data, time) {
 
   this.currentlyPlaying = data
-  self.song.meta = meta
   var id = data.id
   var source = data.source
   var duration = data.duration
@@ -76,7 +82,7 @@ Player.prototype.play = function (data, time) {
 
   //TODO: make sure all play calls have title, then remove this test
   if (data.title) {
-    self.setPlayerTitle(data.title)
+    this.setTitle(data.title)
   }
 
   switch (source) {
@@ -84,27 +90,27 @@ Player.prototype.play = function (data, time) {
       this.playYouTube(data, time)
       break
     case 'MP3':
-    	this.playMp3(data, time)
-    	break
+      this.playMp3(data, time)
+      break
     default:
       console.log("Can't play unknown media type ", source)
   }
 
   //TODO: move this to peertunes
-  self.rating = 0
-  self.vote = 0
+  //self.rating = 0
+  //self.vote = 0
 }
 
 Player.prototype.end = function () {
-	console.log('ending song')
+  console.log('ending song')
   if (this.player != null) {
     this.player.trigger('ended')
     this.player.pause()
   }
-  self.setPlayerTitle('')
+  this.setTitle('')
 
-  //TODO: move this to event listener?
-  self.stopAllHeadBobbing()
+  //TODO: move this to event listener
+  //self.stopAllHeadBobbing()
 
 }
 
@@ -113,12 +119,12 @@ Player.prototype.end = function () {
  * @param {bool} local - if the mp3 is in localstorage
  */
 Player.prototype.playMp3 = function (meta, local) {
-	var self = this
+  var self = this
 
   this.player = self.player.audio
 
   //prevents last cover from showing while new cover loads
-  self.setPlayerCover(null)
+  self.setCover(null)
 
   this.setVisiblePlayer('audio')
 
@@ -131,30 +137,31 @@ Player.prototype.playMp3 = function (meta, local) {
     var tr = self.torrentClient.add(meta.infoHash, function (torrent) {
       var file = torrent.files[0]
       console.log('started downloading file: ', file)
+      // TODO: use config selector
       file.renderTo('#vid2_html5_api') //audio element generated by videojs
 
       //TODO: setting current time doesn't work- wait until metadata loaded?
       //this.player.currentTime(time / 1000)
 
-      self.player.play()
+      self.play()
 
       //restore volume if player changed
-      self.setPlayerVolume(self.volume)
+      self.setVolume(self.volume)
 
       //if (callback) callback()
 
       //TODO: fix this hack
       //TODO: this hack doesn't work properly
       var hackDelay = 120
-      setTimeout(function(){ self.song.player.currentTime((time+hackDelay) / 1000)}, hackDelay)
+      setTimeout(function () { self.song.player.currentTime((time + hackDelay) / 1000)}, hackDelay)
     })
     /*
-    tr.on('download', function (bytes) {
-		  console.log('just downloaded: ' + bytes)
-		  console.log('total downloaded: ' + tr.downloaded);
-		  console.log('download speed: ' + tr.downloadSpeed)
-		  console.log('progress: ' + tr.progress)
-		})
+      tr.on('download', function (bytes) {
+      console.log('just downloaded: ' + bytes)
+      console.log('total downloaded: ' + tr.downloaded);
+      console.log('download speed: ' + tr.downloadSpeed)
+      console.log('progress: ' + tr.progress)
+      })
     */
     //add cover to player as soon as download is done
     tr.on('warning', function (err) {
@@ -164,7 +171,7 @@ Player.prototype.playMp3 = function (meta, local) {
       console.log('torrent metadata loaded')
     }.bind(this))
     tr.on('noPeers', function (announceType) {
-      console.log('torrent has no peers from source ',announceType)
+      console.log('torrent has no peers from source ', announceType)
     })
     tr.on('wire', function (wire) {
       console.log('torrent: connected to new peer')
@@ -178,7 +185,7 @@ Player.prototype.playMp3 = function (meta, local) {
         }
         console.log(blob)
         self.tagReader.tagsFromFile(blob, function (tags) {
-          self.setPlayerCover(tags.cover)
+          self.setCover(tags.cover)
         })
       })
     })
@@ -194,16 +201,16 @@ Player.prototype.playMp3 = function (meta, local) {
 
       //console.log('file: ', file)
       //console.log('file url: ', url)
-      self.song.player.src({ type: 'audio/mp3', src: url })
-      self.song.player.currentTime(time / 1000) // milliseconds -> seconds
-      self.song.player.play()
+      self.player.src({ type: 'audio/mp3', src: url })
+      self.player.currentTime(time / 1000) // milliseconds -> seconds
+      self.player.play()
 
       //restore volume if player changed
-      self.setPlayerVolume(self.volume)
+      self.setVolume(self.volume)
 
       self.tagReader.tagsFromFile(file, function (tags) {
-        self.setPlayerTitle(tags.combinedTitle)
-        self.setPlayerCover(tags.cover)
+        self.setTitle(tags.combinedTitle)
+        self.setCover(tags.cover)
       })
 
 
@@ -222,102 +229,90 @@ Player.prototype.playMp3 = function (meta, local) {
 }
 
 Player.prototype.playYouTube = function (meta) {
-	var id = meta.id
-	var time = meta.time
+  var id = meta.id
+  var time = meta.time
 
   this.player = this.videoPlayer
   this.player.src({ type: 'video/youtube', src: 'https://www.youtube.com/watch?v=' + id })
   this.player.currentTime(time / 1000) // milliseconds -> seconds
   this.player.play()
 
-  //restore volume if player changed
-  self.setPlayerVolume(this.volume)
+  // restore volume if player changed
+  this.setVolume(this.volume)
 
   this.setVisiblePlayer('video')
-
 
   /*
   //TODO: use data.duration/title instead
   YT.getVideoMeta(id, function (meta) {
-    console.log('Got YouTube video metadata: ', meta)
-    self.song.meta = meta
-    self.setPlayerTitle(meta.title)
-    if (callback) callback()
+  console.log('Got YouTube video metadata: ', meta)
+  self.song.meta = meta
+  self.setPlayerTitle(meta.title)
+  if (callback) callback()
   })
-	*/
+  */
 }
 
 
 Player.prototype.setVisiblePlayer = function (playerId) {
-	switch (playerId) {
-		case 'video':
-				$video.removeClass('hide')
-  			$audio.addClass('hide')
-			break
-		case 'audio':
-				$audio.removeClass('hide')
-  			$video.addClass('hide')
-			break
-		default:
-			console.log('Error: Cannot set visible player with id ', playerId)
-	}
+  switch (playerId) {
+    case 'video':
+      this.$video.removeClass('hide')
+      this.$audio.addClass('hide')
+      break
+    case 'audio':
+      this.$audio.removeClass('hide')
+      this.$video.addClass('hide')
+      break
+    default:
+      console.log('Error: Cannot set visible player with id ', playerId)
+  }
 }
 
-//setting uninitialized player volume doesn't work
+// setting uninitialized player volume doesn't work
 Player.prototype.setVolume = function (volume) {
-	this.volume = volume
-	this.players.forEach( function (player) {
+  this.volume = volume
+  this.players.forEach(function (player) {
     player.volume(volume)
   })
 
   if (this.volume === 0) {
-  	//mute icon
+    // mute icon
     this.$volumeButton.removeClass('glyphicon-volume-up').addClass('glyphicon-volume-off')
   } else {
-  	//sound icon
+    // sound icon
     this.$volumeButton.removeClass('glyphicon-volume-off').addClass('glyphicon-volume-up')
   }
 }
 
-Player.prototype.volume = function () {
-	return this.volume
+Player.prototype.getVolume = function () {
+  return this.volume
 }
 
-//TODO: max length in CSS?
-Player.prototype.setPlayerTitle = function (title) {
-  var maxLength = 65 
+// TODO: max length in CSS?
+Player.prototype.setTitle = function (title) {
+  var maxLength = 65
   if (title.length > maxLength) {
     title = title.substring(0, maxLength) + '...'
   }
   $('#song-title').text(title)
 }
 
-//cover must be URL, can be blob url
-//used for audio player only
-Player.prototype.setPlayerCover = function (cover) {
+// cover must be URL, can be blob url
+// used for audio player only
+Player.prototype.setCover = function (cover) {
+  /*
   if (this.player == null) {
     this.player.posterImage.hide()
     return
   }
-  this.$audio.find('.vjs-poster').css('background-image','url('+cover+')')
-  this.player.posterImage.show()
+  */
+  //this.$audio.find('.vjs-poster').css('background-image', 'url(' + cover + ')')
+  //this.player.posterImage.show()
 }
-
 
 //decimal 0-1 because that's what videojs uses
 Player.prototype.updateProgress = function (decimal) {
-  var percent = decimal*100 + '%'
-  this.$songProgressBar.css('width',percent)
+  var percent = decimal * 100 + '%'
+  this.$songProgressBar.css('width', percent)
 }
-
-
-
-this.song = {
-    meta: {},
-    timeout: null,
-    player: null, //videojs player object of current player (video or audio)
-    currentlyPlaying: null, // {id, source, infoHash}
-    startTime: null, // start time when song started playing, sent to guests instead of current time in song
-
-
-  }

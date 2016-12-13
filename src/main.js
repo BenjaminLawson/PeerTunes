@@ -48,55 +48,57 @@ to free up memory
 var PeerTunes = require('./modules/peertunes')
 
 var config = {
-	maxRoomSize: 50, // arbitrary until further testing, NOT USED YET
-  trackerURL: 'wss://tracker.openwebtorrent.com', //wss://tracker.webtorrent.io currently offline
-  username: null, //set by welcome view's username input
+  maxRoomSize: 50, // arbitrary until further testing, NOT USED YET
+  trackerURL: 'wss://tracker.openwebtorrent.com', // wss://tracker.webtorrent.io currently offline
+  username: null, // set by welcome view's username input
   chat: {
     chatBody: '#chat .panel-body',
     chatList: '#chat-list',
     chatInput: '#chat-text',
-    chatEnterButton: '#chat-enter',
+    chatEnterButton: '#chat-enter'
   },
   rtc: {
     iceServers: [
       {'urls': 'stun:stun.l.google.com:19302'},
       {'urls': 'stun:stun3.l.google.com:19302'},
       {'urls': 'stun:stun4.l.google.com:19302'},
-      {'urls': 'turn:numb.viagenie.ca','username': 'peertunes.turn@gmail.com','credential': 'peertunes-turn'}
+      {'urls': 'turn:numb.viagenie.ca', 'username': 'peertunes.turn@gmail.com', 'credential': 'peertunes-turn'}
     ]
   },
   selectors: {
-  	moshpit: '#moshpit',
+    moshpit: '#moshpit',
 
-  	likeButton: '#like-button',
-  	dislikeButton: '#dislike-button',
-
-  	joinQueueButton: '#btn-join-queue',
-
+    likeButton: '#like-button',
+    dislikeButton: '#dislike-button',
+    joinQueueButton: '#btn-join-queue',
     volumeSlider: '#volume-slider'
   },
   moshpit: {
-    //TODO
-  	width: -1,
-  	height: -1
+    // TODO
+    width: -1,
+    height: -1
   },
   songQueue: {
     queue: '#my-queue-list',
     localstorageKey: 'queue',
     queueItem: '.queue-item',
     itemTemplate: '#queueItemTmpl'
+  },
+  player: {
+    audio: '#vid2',
+    video: '#vid1'
   }
 }
 
 $(document).ready(function () {
-	//TODO: username must not contain spaces or special characters
-	//OR use separate ID system
-	//TODO max length
-	$('#btn-login').click(function (e) {
-		config.username = $('#input-username').val()
-    	var PT = new PeerTunes(config)
-		PT.init()
+  // TODO: username must not contain spaces or special characters
+  // OR use separate ID system
+  // TODO max length
+  $('#btn-login').click(function (e) {
+    config.username = $('#input-username').val()
+    var PT = new PeerTunes(config)
+    PT.init()
 
-    	$('#welcome').css('top', '100%') //slide down out of view
-  	})
+    $('#welcome').css('top', '100%') // slide down out of view
+  })
 })

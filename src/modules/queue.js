@@ -65,17 +65,17 @@ function Queue (config) {
 }
 
 Queue.prototype.front = function () {
-	var $items = this.$songQueue.find('li')
+  var $items = this.$songQueue.find('li')
   var queueSize = $items.length
   if (queueSize > 0) {
     var $top = $items.first()
     var song = {
-    	id: $top.data('id'), 
-    	source: $top.data('source'), 
-    	title: $top.data('title'),
-    	duration: $top.data('duration')
+      id: $top.data('id'),
+      source: $top.data('source'),
+      title: $top.data('title'),
+      duration: $top.data('duration')
     }
-    console.log('Front of queue: ', song)
+    //console.log('Front of queue: ', song)
     return song
   }
   return null
