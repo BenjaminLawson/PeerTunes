@@ -1,0 +1,396 @@
+body {
+
+  background-image: url(../img/background.png);
+  background-repeat: no-repeat;
+  background-position: center top;
+
+}
+
+.sidebar {
+  z-index: 150;
+}
+
+#video-container {
+	width: 419px;
+	height: 238px;
+
+	border-style: solid;
+	border-width: 3px;
+	border-color: #404040;
+	background-color: black;
+
+	margin-bottom: 5px;
+  pointer-events: none;
+}
+
+#vid2 {
+    position: absolute;
+    top: 3px;
+}
+
+.full-height {
+	height: 100%;
+}
+
+#chat .panel-body {
+	height: 400px;
+	overflow-y: scroll;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.no-padding {
+  padding: 0px;
+}
+
+.vertical-align {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Welcome */
+
+#welcome {
+  position: fixed;
+  z-index: 999;
+
+  top: 0px;
+  left: 0px;
+  /*top:100%;*/
+
+  width: 100%;
+  height: 100%;
+
+  background-image: url(../img/welcome-background.jpg);
+  background-color: black;
+  background-repeat: no-repeat;
+  background-size: cover;
+
+  overflow: hidden;
+
+  transition:top 0.5s;
+}
+
+
+/* Moshpit */
+#moshpit {
+	position: absolute;
+	width:95%;
+	height:300px;
+}
+
+/* audience members */
+.audience-member{
+	position: absolute;
+  width: 98px; /* width of head */
+}
+.audience-head{
+	position:  absolute;
+}
+
+.audience-body{
+	position: absolute;
+    top: 64px;
+    left: 23px;
+}
+
+/* Popovers */
+.webui-popover {
+  background-color: #222222;
+}
+
+.webui-arrow:after {
+  border-top-color: #222222 !important;
+}
+
+/* Sidebars */
+#sidebar-left {
+  width: 300px;
+  position: absolute;
+  left: 10px;
+}
+
+/* Bottom Bar */
+#bottom-bar {
+  position: fixed;
+  z-index: 200;
+  bottom: 0px;
+  height: 46px;
+  width: 100%;
+  background-color: rgba(27,27,27,0.8);
+}
+
+#bottom-bar-cover {
+  width: 46px;
+  height: 100%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+  /* background-image: url(http://www.designformusic.com/wp-content/uploads/2015/10/insurgency-digital-album-cover-design.jpg); */
+}
+
+#song-details {
+  position: relative;
+  height: 100%;
+  width: 70%;
+  padding: 0 10px 0 10px;
+}
+
+#song-title {
+  position: absolute;
+  width: 90%;
+}
+
+#song-progress {
+  position: relative;
+  top: 32px;
+  height: 8px;
+  margin-bottom: 0px;
+}
+
+#song-progress-text {
+  width: 6%;
+  height: 100%;
+  padding-top: 24px;
+  min-width: 75px;
+}
+
+#bottom-bar-volume {
+  font-size: 26px;
+  width: 10%;
+  height: 100%;
+}
+
+#volume-slider {
+  position: relative;
+  left: 10px;
+  width: 80px;
+}
+
+/* My Queue */
+#my-queue .panel-body{
+	min-height: 390px;
+  max-height: 390px;
+  overflow-y: scroll;
+}
+
+.queue-item-controls {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+}
+
+.queue-item-controls span:hover {
+  color: white;
+}
+
+.queue-item {
+  padding-right: 23px;
+}
+
+
+
+/* Song Search */
+#song-search-result-right {
+  position: absolute;
+  top: 16px;
+  right: 10px;
+} 
+#song-search-results {
+  margin-top:10px;
+  max-height: 400px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+}
+
+/* Headbob CSS3 animation */
+.headbob-animation{
+  animation: headbobAnimationFrames ease-in-out 1.7s;
+  animation-iteration-count: infinite;
+  transform-origin: 50% 100%;
+  -webkit-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-transform-origin: 50% 100%;
+  -moz-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -moz-animation-iteration-count: infinite;
+  -moz-transform-origin: 50% 100%;
+  -o-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -o-animation-iteration-count: infinite;
+  -o-transform-origin: 50% 100%;
+  -ms-animation: headbobAnimationFrames ease-in-out 1.7s;
+  -ms-animation-iteration-count: infinite;
+  -ms-transform-origin: 50% 100%;
+}
+
+@keyframes headbobAnimationFrames{
+  0% {
+    transform:  rotate(0deg) ;
+  }
+  25% {
+    transform:  rotate(15deg) ;
+  }
+  50% {
+    transform:  rotate(0deg) ;
+  }
+  75% {
+    transform:  rotate(-15deg) ;
+  }
+  100% {
+    transform:  rotate(0deg) ;
+  }
+}
+
+@-moz-keyframes headbobAnimationFrames{
+  0% {
+    -moz-transform:  rotate(0deg) ;
+  }
+  25% {
+    -moz-transform:  rotate(15deg) ;
+  }
+  50% {
+    -moz-transform:  rotate(0deg) ;
+  }
+  75% {
+    -moz-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -moz-transform:  rotate(0deg) ;
+  }
+}
+
+@-webkit-keyframes headbobAnimationFrames {
+  0% {
+    -webkit-transform:  rotate(0deg) ;
+  }
+  25% {
+    -webkit-transform:  rotate(15deg) ;
+  }
+  50% {
+    -webkit-transform:  rotate(0deg) ;
+  }
+  75% {
+    -webkit-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -webkit-transform:  rotate(0deg) ;
+  }
+}
+
+@-o-keyframes headbobAnimationFrames {
+  0% {
+    -o-transform:  rotate(0deg) ;
+  }
+  25% {
+    -o-transform:  rotate(15deg) ;
+  }
+  50% {
+    -o-transform:  rotate(0deg) ;
+  }
+  75% {
+    -o-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -o-transform:  rotate(0deg) ;
+  }
+}
+
+@-ms-keyframes headbobAnimationFrames {
+  0% {
+    -ms-transform:  rotate(0deg) ;
+  }
+  25% {
+    -ms-transform:  rotate(15deg) ;
+  }
+  50% {
+    -ms-transform:  rotate(0deg) ;
+  }
+  75% {
+    -ms-transform:  rotate(-15deg) ;
+  }
+  100% {
+    -ms-transform:  rotate(0deg) ;
+  }
+}
+
+
+/* Headnod CSS3 animation */
+.head-nod{
+  animation: nod-frames linear 0.4s;
+  animation-iteration-count: infinite;
+  transform-origin: 50% 50%;
+  -webkit-animation: nod-frames linear 0.4s;
+  -webkit-animation-iteration-count: infinite;
+  -webkit-transform-origin: 50% 50%;
+  -moz-animation: nod-frames linear 0.4s;
+  -moz-animation-iteration-count: infinite;
+  -moz-transform-origin: 50% 50%;
+  -o-animation: nod-frames linear 0.4s;
+  -o-animation-iteration-count: infinite;
+  -o-transform-origin: 50% 50%;
+  -ms-animation: nod-frames linear 0.4s;
+  -ms-animation-iteration-count: infinite;
+  -ms-transform-origin: 50% 50%;
+}
+
+@keyframes nod-frames{
+  0% {
+    transform:  translate(0px,0px)  ;
+  }
+  50% {
+    transform:  translate(0px,10px)  ;
+  }
+  100% {
+    transform:  translate(0px,0px)  ;
+  }
+}
+
+@-moz-keyframes nod-frames{
+  0% {
+    -moz-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -moz-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -moz-transform:  translate(0px,0px)  ;
+  }
+}
+
+@-webkit-keyframes nod-frames {
+  0% {
+    -webkit-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -webkit-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -webkit-transform:  translate(0px,0px)  ;
+  }
+}
+
+@-o-keyframes nod-frames {
+  0% {
+    -o-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -o-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -o-transform:  translate(0px,0px)  ;
+  }
+}
+
+@-ms-keyframes nod-frames {
+  0% {
+    -ms-transform:  translate(0px,0px)  ;
+  }
+  50% {
+    -ms-transform:  translate(0px,10px)  ;
+  }
+  100% {
+    -ms-transform:  translate(0px,0px)  ;
+  }
+}

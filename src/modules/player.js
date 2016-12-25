@@ -228,9 +228,8 @@ Player.prototype.playMp3 = function (meta, local) {
   }
 }
 
-Player.prototype.playYouTube = function (meta) {
+Player.prototype.playYouTube = function (meta, time) {
   var id = meta.id
-  var time = meta.time
 
   this.player = this.videoPlayer
   this.player.src({ type: 'video/youtube', src: 'https://www.youtube.com/watch?v=' + id })

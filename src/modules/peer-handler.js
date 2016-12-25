@@ -102,13 +102,12 @@ function onPeer (peer) {
 
               // send host (self), since host isn't in guests array
               peer.send(JSON.stringify({msg: 'new-user', value: {username: self.username, like: (self.vote === 1)}}))
-
+	      
               // send current song info
               if (self.songManager.isPlaying()) {
-                var song = self.song.currentlyPlaying
-                if (self.songManager.getInfoHash != null) song.infoHash = self.songManager.getInfoHash
+                var song = self.songManager.getMeta()
                 console.log('Sending new user song: ', song)
-                var currentSong = {msg: 'song', value: song, dj: self.host.djQueue[0].username, currentTime: self.songManager.getMeta().currentTime}
+                var currentSong = {msg: 'song', value: song, dj: self.host.djQueue[0].username}
                 peer.send(JSON.stringify(currentSong))
               }
             }
@@ -120,6 +119,8 @@ function onPeer (peer) {
             }
             break
           case 'rate': // note: object format different if sent from guest->host vs. host->guests (additional value.rating property)
+	    // TODO: separate message name for guest, host
+	  
             console.log('Received rating update: ', data.value)
 
             if (self.isHost) { // update rating & relay to other guests
@@ -279,8 +280,8 @@ function onPeer (peer) {
               if (data.value.infoHash) songInfo.infoHash = data.value.infoHash
             }
 
-            console.log('Calculated current time = ', data.currentTime)
-            self.player.play(songInfo, data.currentTime)
+            console.log('current time = ', data.value.currentTime)
+            self.player.play(songInfo, data.value.currentTime)
             break
           default:
             console.log('unknown message: ' + data.msg)

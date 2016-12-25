@@ -65,3 +65,7 @@ SongManager.prototype.getMeta = function () {
 SongManager.prototype.setInfoHash = function (infoHash) {
   this.meta.infoHash = infoHash
 }
+
+SongManager.prototype.getInfoHash = function () {
+  return this.meta.infoHash
+}

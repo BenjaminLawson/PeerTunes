@@ -217,9 +217,7 @@ PeerTunes.prototype.initClickHandlers = function () {
   $('#btn-create-room').click(function (e) {
     console.log('create/destroy room clicked')
 
-    $('.audience-member').tooltip('destroy')
-    self.$moshpit.html('')
-    chat.clear()
+    self.resetRoom()
 
     if (self.isHost) { // button = Destroy Room
       $(this).text('Create Room')
@@ -246,7 +244,6 @@ PeerTunes.prototype.initClickHandlers = function () {
   $('#btn-leave-room').click(function (e) {
     $(this).hide()
     self.leaveRoom()
-    self.song.end()
   })
 
   // join DJ queue
@@ -400,7 +397,7 @@ PeerTunes.prototype.resetRoom = function () {
   $('.audience-member').tooltip('destroy')
   this.$moshpit.html('')
   chat.clear()
-  this.song.end()
+  this.player.end()
   $('#btn-leave-room').hide()
 }
 
