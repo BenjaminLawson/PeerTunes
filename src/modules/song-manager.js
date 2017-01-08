@@ -11,8 +11,8 @@ var inherits = require('util').inherits
 
 function SongManager () {
   this.meta = {}
-  this.updater
-  this.timeout
+  this.updater = null
+  this.timeout = null
   this.playing = false
 }
 

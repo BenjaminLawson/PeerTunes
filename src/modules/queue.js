@@ -13,7 +13,7 @@ var SongDuration = require('./song-duration')
 module.exports = Queue
 
 function Queue (config) {
-	var self = this
+ 	var self = this
 
 	this.$songQueue =$(config.queue)
 	this.songQueue = config.queue //selector string

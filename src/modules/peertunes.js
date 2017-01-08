@@ -220,6 +220,7 @@ PeerTunes.prototype.initClickHandlers = function () {
     self.resetRoom()
 
     if (self.isHost) { // button = Destroy Room
+      self.songManager.end()
       $(this).text('Create Room')
       self.stopHosting()
     } else {
