@@ -8,16 +8,34 @@ var inherits = require('util').inherits
 function ChatModel (config) {
   this.maxMessageLength = config.maxMessageLength
   this.messages = []
+  this.username = config.username
+
+  EventEmitter.call(this)
 }
 
 inherits(ChatModel, EventEmitter)
 
+ChatModel.prototype.selfMessage = function (message) {
+  // process message
+  message.message = this.filter(message.message)
+  
+  this.addMessage(message)
+  this.emit('new-chat-self', message)
+}
+
+ChatModel.prototype.receiveMessage = function (message) {
+  // process message
+  message.message = this.filter(message.message)
+  
+  this.addMessage(message)
+  this.emit('new-chat-peer', message)
+}
+
 ChatModel.prototype.addMessage = function (message) {
-  message.text = this.filter(message.text)
-  message.text = this.emojify(message.text)
 
   this.messages.push(message)
-  this.emit('new-chat-message', message)
+
+  this.emit('new-chat', message)
 }
 
 ChatModel.prototype.deleteAllMessages = function () {
@@ -36,14 +54,6 @@ ChatModel.prototype.filter = function (text) {
   return text
 }
 
-ChatModel.prototype.emojify = function (text) {
-  // replace common ascii emoticons with shortnames
-  text = text.replace(/:\)/g, ':smile:')
-  text = text.replace(/:D/g, ':grin:')
-  text = text.replace(/<3/g, ':heart:')
-
-    // convert emoji shortnames to image tags
-  text = emojione.shortnameToImage(text)
-
-  return text
+ChatModel.prototype.getUsername = function () {
+  return this.username
 }

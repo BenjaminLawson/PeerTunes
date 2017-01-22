@@ -120,7 +120,7 @@ function onPeer (peer) {
             break
           case 'rate': // note: object format different if sent from guest->host vs. host->guests (additional value.rating property)
 	    // TODO: separate message name for guest, host
-	  
+
             console.log('Received rating update: ', data.value)
 
             if (self.isHost) { // update rating & relay to other guests
@@ -161,20 +161,20 @@ function onPeer (peer) {
             if (!self.isHost && peer !== self.hostPeer) return
             // TODO: verify message came from guest
 
-            var wasAtBottom = self.chat.isScrolledToBottom()
+            // don't trust peer
+            data.text = self.chatModel.filter(data.text)
+
             if (self.isHost) {
-              data.text = self.chat.filter(data.text)
               self.broadcastToRoom({msg: 'chat', value: {id: peer.username, text: data.text}}, peer)
-              self.chat.appendMsg(peer.username, data.text)
+              // self.chat.appendMsg(peer.username, data.text)
+              self.chatModel.receiveMessage({username: peer.username, message: data.text})
               self.avatarChatPopover(peer.username, self.chat.emojify(data.text))
             } else {
               var username = data.value.id
               if (peer === self.hostPeer) username += ' [Host]'
-              self.chat.appendMsg(username, data.value.text)
+              self.chatModel.receiveMessage({username: username, message: data.text})
               self.avatarChatPopover(data.value.id, self.chat.emojify(data.value.text))
             }
-
-            if (wasAtBottom) self.chat.scrollToBottom()
             break
           case 'leave':
             //TODO: check if peer was in dj queue & remove

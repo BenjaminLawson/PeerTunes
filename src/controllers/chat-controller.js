@@ -1,27 +1,21 @@
-
-
-var ChatView = require('../views/chat-view')
-var ChatModel = require('../models/chat-model')
-
 module.exports = ChatController
 
-function ChatController (config) {
+function ChatController (view, model) {
   var self = this
 
-  this.username = config.username
-
-  this.view = new ChatView(config.chatView)
-  this.model = new ChatModel(config.chatModel)
-
-  this.model.on('new-chat-message', this.view.onMessage)
-  this.model.on('delete-all-messages', this.view)
+  this.view = view
+  this.model = model
+  
+  this.model.on('new-chat', this.view.onMessage.bind(this.view))
+  this.model.on('delete-all-messages', this.view.clear.bind(this.view))
 
   var DOM = this.view.getDOM()
 
   // click handlers
   DOM.$chatEnterButton.click(function (e) {
-    var text = self.view.DOM.$chatInput.val()
-    self.model.addMessage({username: self.username, message: text})
+    var text = DOM.$chatInput.val()
+    var username = self.model.getUsername()
+    self.model.selfMessage({username: username, message: text})
   })
 
   // key listeners
@@ -29,12 +23,9 @@ function ChatController (config) {
 
   DOM.$chatInput.keydown(function (e) {
     if (e.keyCode === ENTER_KEY) {
-      var text = self.view.DOM.$chatInput.val()
-      self.model.addMessage({username: self.username, message: text})
+      var text = DOM.$chatInput.val()
+      var username = self.model.getUsername()
+      self.model.selfMessage({username: username, message: text})
     }
   })
-}
-
-ChatController.prototype.onMessage = function (msg) {
-  this.model.addMessage(msg)
 }

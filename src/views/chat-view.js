@@ -31,12 +31,26 @@ ChatView.prototype.clearInput = function () {
 }
 
 ChatView.prototype._appendMessage = function (msg) {
+  msg.message = this.emojify(msg.message)
+  
   var renderedMessage = Mustache.render(this.messageTemplate, msg)
   this.DOM.$chatList.append(renderedMessage)
 }
 
 ChatView.prototype.clear = function () {
   this.DOM.$chatList.html('')
+}
+
+ChatView.prototype.emojify = function (text) {
+  // replace common ascii emoticons with shortnames
+  text = text.replace(/:\)/g, ':smile:')
+  text = text.replace(/:D/g, ':grin:')
+  text = text.replace(/<3/g, ':heart:')
+
+    // convert emoji shortnames to image tags
+  text = emojione.shortnameToImage(text)
+
+  return text
 }
 
 ChatView.prototype._scrollToBottom = function () {

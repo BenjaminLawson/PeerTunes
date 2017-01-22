@@ -15,18 +15,30 @@ var localforage = require('localforage')
 
 // modules
 var YT = require('./YT')
-var chat = require('./chat')
 var onPeer = require('./peer-handler')
 var Player = require('./player')
 var SongQueue = require('./queue')
 var SongManager = require('./song-manager')
 
+//chat
+var ChatController = require('../controllers/chat-controller')
+var ChatView = require('../views/chat-view')
+var ChatModel = require('../models/chat-model')
+
 // TODO: add element selectors to config
 function PeerTunes (config) {
   var self = this
 
-  this.chat = chat
   this.config = config // TODO: use defaults if not provided
+
+  // Chat
+  // TODO: config
+  this.chatView = new ChatView(config.chat)
+  this.chatModel = new ChatModel({
+    username: config.username,
+    maxMessageLength: 400
+  })
+  this.chatController = new ChatController(this.chatView, this.chatModel)
 
   this.tracker = null
   this.currentTorrentID = null
@@ -106,21 +118,23 @@ PeerTunes.prototype.init = function () {
 
   this.dummySelfPeer = {username: this.username, id: this.peerId}
 
-  // chat setup
-  this.config.chat.name = this.username
-  chat.init(this.config.chat)
-
-  chat.on('submit', function (text) {
+  var broadcastChat = function (message) {
+    console.log("received new-chat-self")
     if (self.isHost) {
-      self.broadcastToRoom({msg: 'chat', value: {id: self.username, text: text}})
+      self.broadcastToRoom({msg: 'chat', value: {id: message.username, text: message.message}})
     } else {
       if (self.hostPeer != null) {
-        self.hostPeer.send(JSON.stringify({msg: 'chat', text: text}))
+        self.hostPeer.send(JSON.stringify({msg: 'chat', text: message.message}))
       }
     }
 
-    self.avatarChatPopover(self.username, chat.emojify(text))
-  })
+    self.avatarChatPopover(message.username, message.message)
+  }
+  
+  // chat setup
+  this.chatModel.on('new-chat-self', broadcastChat)
+
+  
 
   // set up tracker
   this.tracker = new Tracker({
@@ -329,7 +343,9 @@ PeerTunes.prototype.startHosting = function (title) {
   console.log('Starting hosting')
 
   this.addAvatar(this.username)
-  chat.appendMsg('Notice', 'Room Created')
+  
+  //chat.appendMsg('Notice', 'Room Created')
+  console.log("[Room Created]")
 
   this.broadcast({username: this.username})
   this.broadcast({msg: 'new-room', value: title})
@@ -397,7 +413,7 @@ PeerTunes.prototype.leaveRoom = function () {
 PeerTunes.prototype.resetRoom = function () {
   $('.audience-member').tooltip('destroy')
   this.$moshpit.html('')
-  chat.clear()
+  this.chatModel.deleteAllMessages()
   this.player.end()
   $('#btn-leave-room').hide()
 }

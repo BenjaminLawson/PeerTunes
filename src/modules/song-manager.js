@@ -14,6 +14,8 @@ function SongManager () {
   this.updater = null
   this.timeout = null
   this.playing = false
+
+  EventEmitter.call(this)
 }
 
 inherits(SongManager, EventEmitter)

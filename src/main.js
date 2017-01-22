@@ -49,9 +49,10 @@ var PeerTunes = require('./modules/peertunes')
 
 var config = {
   maxRoomSize: 50, // arbitrary until further testing, NOT USED YET
-  trackerURL: 'wss://tracker.openwebtorrent.com', // wss://tracker.webtorrent.io currently offline
+  trackerURL: 'wss://tracker.openwebtorrent.com',
   username: null, // set by welcome view's username input
   chat: {
+    messageTemplate: '#chatMessageTmpl',
     chatBody: '#chat .panel-body',
     chatList: '#chat-list',
     chatInput: '#chat-text',
