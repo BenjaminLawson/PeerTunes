@@ -18,7 +18,7 @@ inherits(ChatModel, EventEmitter)
 ChatModel.prototype.selfMessage = function (message) {
   // process message
   message.message = this.filter(message.message)
-  
+
   this.addMessage(message)
   this.emit('new-chat-self', message)
 }

@@ -3,7 +3,7 @@
 // var inherits = require('inherits')
 
 // Globals
-//var $, dragula
+//var $, dragula, emojione
 
 // 3rd party libraries
 var hat = require('hat')
@@ -42,6 +42,9 @@ function PeerTunes (config) {
 
   this.tracker = null
   this.currentTorrentID = null
+
+  // replace ascii with emoji
+  emojione.ascii = true
 
   // set up webtorrent
   global.WEBTORRENT_ANNOUNCE = [ this.config.trackerURL ]
@@ -119,12 +122,11 @@ PeerTunes.prototype.init = function () {
   this.dummySelfPeer = {username: this.username, id: this.peerId}
 
   var broadcastChat = function (message) {
-    console.log("received new-chat-self")
     if (self.isHost) {
-      self.broadcastToRoom({msg: 'chat', value: {id: message.username, text: message.message}})
+      self.broadcastToRoom({msg: 'chat', value: message})
     } else {
       if (self.hostPeer != null) {
-        self.hostPeer.send(JSON.stringify({msg: 'chat', text: message.message}))
+        self.hostPeer.send(JSON.stringify({msg: 'chat', value: message}))
       }
     }
 

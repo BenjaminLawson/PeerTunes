@@ -31,26 +31,19 @@ ChatView.prototype.clearInput = function () {
 }
 
 ChatView.prototype._appendMessage = function (msg) {
-  msg.message = this.emojify(msg.message)
+  msg.message = emojione.shortnameToImage(msg.message)
   
   var renderedMessage = Mustache.render(this.messageTemplate, msg)
+  
+  var atBottomBefore = this._isScrolledToBottom()
   this.DOM.$chatList.append(renderedMessage)
+  if (atBottomBefore) {
+    this._scrollToBottom()
+  }
 }
 
 ChatView.prototype.clear = function () {
   this.DOM.$chatList.html('')
-}
-
-ChatView.prototype.emojify = function (text) {
-  // replace common ascii emoticons with shortnames
-  text = text.replace(/:\)/g, ':smile:')
-  text = text.replace(/:D/g, ':grin:')
-  text = text.replace(/<3/g, ':heart:')
-
-    // convert emoji shortnames to image tags
-  text = emojione.shortnameToImage(text)
-
-  return text
 }
 
 ChatView.prototype._scrollToBottom = function () {
@@ -60,5 +53,5 @@ ChatView.prototype._scrollToBottom = function () {
 
 ChatView.prototype._isScrolledToBottom = function () {
   var chatBody = this.DOM.$chatBody[0]
-  return (chatBody.scrollHeight - chatBody.offsetHeight - chatBody.scrollTop < 1)
+  return (chatBody.scrollHeight - chatBody.offsetHeight - chatBody.scrollTop < 5)
 }

@@ -160,20 +160,21 @@ function onPeer (peer) {
             // verify that message actually came from room host
             if (!self.isHost && peer !== self.hostPeer) return
             // TODO: verify message came from guest
-
+            var message = data.value
             // don't trust peer
-            data.text = self.chatModel.filter(data.text)
+            message.message = self.chatModel.filter(message.message)
 
             if (self.isHost) {
-              self.broadcastToRoom({msg: 'chat', value: {id: peer.username, text: data.text}}, peer)
-              // self.chat.appendMsg(peer.username, data.text)
-              self.chatModel.receiveMessage({username: peer.username, message: data.text})
-              self.avatarChatPopover(peer.username, self.chat.emojify(data.text))
+              // don't trust peer
+              message.username = peer.username
+              self.broadcastToRoom({msg: 'chat', value: message}, peer)
+
+              self.chatModel.receiveMessage(message)
+
+              self.avatarChatPopover(message.username, emojione.shortnameToImage(message.message))
             } else {
-              var username = data.value.id
-              if (peer === self.hostPeer) username += ' [Host]'
-              self.chatModel.receiveMessage({username: username, message: data.text})
-              self.avatarChatPopover(data.value.id, self.chat.emojify(data.value.text))
+              self.chatModel.receiveMessage(message)
+              self.avatarChatPopover(message.username, emojione.shortnameToImage(message.message))
             }
             break
           case 'leave':

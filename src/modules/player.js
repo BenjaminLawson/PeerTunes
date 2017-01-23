@@ -1,7 +1,3 @@
-/*
-Must be designed so that player functions when headless
-(ie. not reliant on videojs for timing)
-*/
 
 /* Globals */
 //var $, moment, videojs
