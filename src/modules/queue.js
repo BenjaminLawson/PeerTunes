@@ -35,10 +35,6 @@ function Queue (config) {
     var file = files[0]
     var key = file.name
 
-
-
-
-
     console.log('Reading tags')
 
     self.tagReader.tagsFromFile(file, function(tags) {
