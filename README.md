@@ -8,6 +8,7 @@ Distribution mirrors:
 ### Development
  - Automatically build changes to src/main.js : `npm run-script watch`
  - Start local web server: `npm start`
+ - Dev: npm run dev
 ### How
  - Users join bittorrent swarm where peers announce rooms
  - Users subscribe to room updates from host peer

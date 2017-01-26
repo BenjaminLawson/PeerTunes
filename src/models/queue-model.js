@@ -16,6 +16,10 @@ function QueueModel (config) {
 
 inherits(QueueModel, EventEmitter)
 
+QueueModel.prototype.getSongs = function () {
+  return this.songs
+}
+
 QueueModel.prototype.addSong = function (song) {
   this.songs.push(song)
   this._save()
@@ -48,6 +52,19 @@ QueueModel.prototype.removeSongAtPosition = function (index) {
   this.emit('remove-song', index)
 }
 
+QueueModel.prototype.moveToTop = function (index) {
+  this.move(index, 0)
+  this.emit('move-to-top', index)
+}
+
+// triggered by drag/drop reordering on view
+QueueModel.prototype.move = function (from, to) {
+  var removedSongArray = this.songs.splice(from, 1)
+  var removedSong = removedSongArray[0]
+  this.songs.splice(to, 0, removedSong)
+  this._save()
+}
+
 QueueModel.prototype._save = function () {
   var queueJSON = {queue: this.songs}
   localforage.setItem(this.localstorageKey, queueJSON).then(function (value) {
@@ -57,12 +74,24 @@ QueueModel.prototype._save = function () {
   })
 }
 
-QueueModel.prototype._restore = function () {
+QueueModel.prototype.restore = function (callback) {
+  var self = this
   localforage.getItem(this.localstorageKey).then(function (value) {
     console.log('Queue restored')
-    this.songs = value.queue
+    self.songs = value.queue
+    callback()
   }).catch(function (err) {
     console.log('Error retreiving queue from localstorage, maybe this is the first use')
     console.log(err)
   })
 }
+
+
+
+
+
+
+
+
+
+

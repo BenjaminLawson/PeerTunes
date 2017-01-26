@@ -3,7 +3,7 @@
 // var inherits = require('inherits')
 
 // Globals
-//var $, dragula, emojione
+//var $, emojione
 
 // 3rd party libraries
 var hat = require('hat')
@@ -17,13 +17,17 @@ var localforage = require('localforage')
 var YT = require('./YT')
 var onPeer = require('./peer-handler')
 var Player = require('./player')
-var SongQueue = require('./queue')
 var SongManager = require('./song-manager')
 
-//chat
+// chat
 var ChatController = require('../controllers/chat-controller')
 var ChatView = require('../views/chat-view')
 var ChatModel = require('../models/chat-model')
+
+// queue
+var QueueController = require('../controllers/queue-controller')
+var QueueView = require('../views/queue-view')
+var QueueModel = require('../models/queue-model')
 
 // TODO: add element selectors to config
 function PeerTunes (config) {
@@ -32,19 +36,28 @@ function PeerTunes (config) {
   this.config = config // TODO: use defaults if not provided
 
   // Chat
-  // TODO: config
-  this.chatView = new ChatView(config.chat)
   this.chatModel = new ChatModel({
     username: config.username,
     maxMessageLength: 400
   })
+  this.chatView = new ChatView(this.chatModel, config.chat)
   this.chatController = new ChatController(this.chatView, this.chatModel)
+
+  // Song Queue
+  this.queueModel = new QueueModel({
+    localstorageKey: config.songQueue.localstorageKey
+  })
+  this.queueView = new QueueView(this.queueModel, {
+    itemTemplate: config.songQueue.itemTemplate,
+    songQueue: config.songQueue.queue
+  })
+  this.queueController = new QueueController(this.queueView, this.queueModel, {
+    queueItem: config.songQueue.queueItem
+  })
 
   this.tracker = null
   this.currentTorrentID = null
 
-  // replace ascii with emoji
-  emojione.ascii = true
 
   // set up webtorrent
   global.WEBTORRENT_ANNOUNCE = [ this.config.trackerURL ]
@@ -80,8 +93,6 @@ function PeerTunes (config) {
   this.inQueue = false // if this peer is in DJ queue
   this.isDJ = false // this peer is the dj
 
-  this.songQueue = new SongQueue(config.songQueue)
-
   config.player.torrentClient = this.torrentClient
   this.player = new Player(config.player)
 
@@ -111,12 +122,14 @@ PeerTunes.prototype.init = function () {
 
   console.log('Initializing PeerTunes')
 
+  // replace ascii with emoji
+  emojione.ascii = true
+
   if (!Peer.WEBRTC_SUPPORT) {
     window.alert('This browser is unsupported. Please use a browser with WebRTC support.')
     return
   }
 
-  // PT.username = prompt('Please enter your username (no spaces):')
   console.log('Your username: ', this.username)
 
   this.dummySelfPeer = {username: this.username, id: this.peerId}
@@ -150,18 +163,7 @@ PeerTunes.prototype.init = function () {
 
   // set up handlers
   this.initClickHandlers()
-
-  // init Dragula in queue
-  // TODO: prevent top song from being dragged if DJ
-  var drake = dragula([document.querySelector(this.config.songQueue.queue)])
-  // save queue when reordered
-  drake.on('drop', function (el, target, source, sibling) {
-    self.songQueue.saveToLocalStorage()
-  })
-
-  // restore queue from localstorage
-  this.songQueue.restore()
-
+  
   // key listeners
   var ENTER_KEY = 13
 
@@ -528,7 +530,7 @@ PeerTunes.prototype.playNextDJSong = function () {
     if (this.isDJ) {
       console.log('Host (you) is the next DJ')
 
-      var meta = this.songQueue.front()
+      var meta = this.queueModel.front()
 
       this.songManager.play(meta)
       this.player.play(meta, 0) // play in host's player
@@ -762,14 +764,9 @@ PeerTunes.prototype.doSongSearch = function () {
       var title = $(this).data('title')
       var duration = $(this).data('duration')
       var meta = {title: title, id: id, source: source, duration: duration}
-      self.songQueue.addSong(meta)
+      self.queueModel.addSong(meta)
     })
   })
 }
-
-
-
-
-
 
 module.exports = PeerTunes

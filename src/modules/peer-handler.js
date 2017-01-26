@@ -5,11 +5,11 @@ var YT = require('./YT')
 
 module.exports = onPeer
 
-//always call with 'self' bound to PeerTunes
+// always call with 'self' bound to PeerTunes
 function onPeer (peer) {
   var self = this
   // don't add duplicate peers
-  //TODO: won't work with multiple trackers
+  // TODO: won't work with multiple trackers
   if (this.peers.map(function (p) { return p.id }).indexOf(peer.id) > -1) return
 
   console.log('Tracker sent new peer: ' + peer.id)

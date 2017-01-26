@@ -3,7 +3,8 @@ var Mustache = require('mustache')
 
 module.exports = ChatView
 
-function ChatView (config) {
+function ChatView (model, config) {
+  this.model = model
   this.messageTemplate = $(config.messageTemplate).html()
 
   this.DOM = {

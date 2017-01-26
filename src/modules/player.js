@@ -237,17 +237,7 @@ Player.prototype.playYouTube = function (meta, time) {
 
   this.setVisiblePlayer('video')
 
-  /*
-  //TODO: use data.duration/title instead
-  YT.getVideoMeta(id, function (meta) {
-  console.log('Got YouTube video metadata: ', meta)
-  self.song.meta = meta
-  self.setPlayerTitle(meta.title)
-  if (callback) callback()
-  })
-  */
 }
-
 
 Player.prototype.setVisiblePlayer = function (playerId) {
   switch (playerId) {
@@ -285,6 +275,7 @@ Player.prototype.getVolume = function () {
 }
 
 // TODO: max length in CSS?
+// https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
 Player.prototype.setTitle = function (title) {
   var maxLength = 65
   if (title.length > maxLength) {
