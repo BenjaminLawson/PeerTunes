@@ -90,7 +90,7 @@ PeerManager.prototype._onPeerData = function (peer, data) {
   }
 
   if (data.msg) {
-    this.emit('peer:msg', data)
+    this.emit('peer:msg', peer, data)
   }
 }
 
