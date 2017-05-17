@@ -64,7 +64,7 @@ https://www.reddit.com/r/dubtrack/comments/4qqca0/can_dubtrack_devs_please_make_
  - Plug.dj ($1.25M seed funding) [Bankrupt, then bought out & resurrected, popular]
  - Soundtrack.io [No users, open-source]
  - Jukebox.today
- - musiqpad.com [open-source, decentralized rooms, the next best thing!]
+ - ~~musiqpad.com~~ [open-source, decentralized rooms] [discontinued]
  - ~~rolling.fm~~ [Offline]
  - ~~Qus~~ (mobile) [Shut down by streaming services]
 https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
@@ -77,13 +77,13 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - ~~Mixify.com~~ [Shut down / merged]
  - beatsense.com
  - ~~Grooveshark broadcast~~ [Shutdown due to lawsuit]
- - juqster.com
+ - ~~juqster.com~~ [shut down]
  - lifeboatradio.com [bare bones]
  - 4ever.tv
  - ~~turn.fm~~ [Vaporware]
  - ~~spinit.fm~~ [Vaporware]
  - totem.fm [Broken & abandoned?, front end open source]
- - blog.bonsai.fm [Open source, abandoned?]
+ - ~~blog.bonsai.fm~~ [Open source, cancelled]
  - https://github.com/aportner/opentt [Open source, not hosted]
  - https://github.com/calzoneman/sync [Open source, several hosted instances]
  - ~~listeningroom.net~~ [Shut down]
