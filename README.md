@@ -16,9 +16,9 @@ Distribution mirrors:
 ### Why
  - Hosting this type of real-time service with the client-server design is EXPENSIVE
  - Business model shown to be unprofitable time and time again
- - Websites keep popping up and shutting down, this will be perminant
+ - Websites keep popping up and shutting down, this will be permanent
 ### Features
- - $0 to host (static files => host on IPFS, gh-pages, bitbucket.io, dropbox, etc.)
+ - $0 to host (static files => host on IPFS, gh-pages, bitbucket.io, electron app, etc.)
  - YouTube video support
  - YouTube search
  - Chat with full emoji support
@@ -88,3 +88,5 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - https://github.com/calzoneman/sync [Open source, several hosted instances]
  - ~~listeningroom.net~~ [Shut down]
  - ~~Outloud.fm~~ [Shut down]
+ - soundbounce.org [requires Spotify premium]
+ - jqbx.fm [requires Spotify premium]
