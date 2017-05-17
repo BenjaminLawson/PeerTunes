@@ -73,7 +73,7 @@ https://www.facebook.com/notes/qus/closed-for-remodeling/702138243257896
  - ~~BudtoBud~~ (desktop) [Shut down]
  - ~~Sounddrop.fm~~ [Killed by Spotify]
  - ~~Cred.fm~~ [Shut down]
- - corp.beatrobo.com [Website shut down, now iOS only]($1.7 million funding)
+ - ~~corp.beatrobo.com~~ ($1.7 million funding)[shut down]
  - ~~Mixify.com~~ [Shut down / merged]
  - beatsense.com
  - ~~Grooveshark broadcast~~ [Shutdown due to lawsuit]
