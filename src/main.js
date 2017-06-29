@@ -9,7 +9,6 @@ mp3 MediaSource only works in Chrome, not firefox
 Future features:
 -seed & play mp3 file (not permanent in queue?)
 -drawing (maybe dj whiteboard, or draw and then drawing appears above head)
--store playlist in localstorage
 -let user pause, but keep timer so on play it jumps to current time
 
 TODO: make lobby system function that requires response
@@ -25,8 +24,7 @@ TODO: use RSA keys to prove identities & make friend feature
 TODO: host sends start time, instad of time since start, for more accurate guest time calculation
 TODO: fix bug if you try to join your own room
 
-TODO: hosts broadcast room population every 5 minutes
-TODO: scuttlebutt: https://github.com/dominictarr/scuttlebutt#scuttlebuttevents
+
 TODO: "server" version, bittorrent-tracker works on node.js (just remove player code)
 --> put player code in module, don't use on server
 --> don't make avatar for server
@@ -34,10 +32,6 @@ http://dexie.org/
 TODO: upload images to imgur
 TODO: add currently playing song to playlist
 --- if mp3, download torrent and add to localstorage
-TODO: download mp3 before song starts
-TODO: firefox support
-TODO: hash ip address and display with username as reinforcement of identity
-TODO: friend people based on ip address and username
 TODO: export/import data (playlist, mp3s, friends)
 TODO: store export/state into dropbox, etc. with api?
 TODO: dj queue view
@@ -46,20 +40,36 @@ TODO: use revokeObjectURL
 https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL
 to free up memory
 */
+var JSEncrypt = require('jsencrypt').JSEncrypt
 
 var PeerTunes = require('./modules/peertunes')
 
 var config =require('./config')
 
 $(document).ready(function () {
-  // TODO: username must not contain spaces or special characters
-  // OR use separate ID system
-  // TODO max length
   $('#btn-login').click(function (e) {
-    config.username = $('#input-username').val()
+    init()
+  })
+})
+
+function init () {
+  config.username = $('#input-username').val()
+  
+  console.log('generating keypair...')
+  
+  var keypair = new JSEncrypt({default_key_size: 512})
+  keypair.getKey(function () {
+
+    config.keys = {
+      private: keypair.getPrivateKey(),
+      public: keypair.getPublicKey()
+    }
+
+    console.log(config.keys)
+
     var PT = new PeerTunes(config)
-    PT.init()
 
     $('#welcome').css('top', '100%') // slide down out of view
   })
-})
+  
+}

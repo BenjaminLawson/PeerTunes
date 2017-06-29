@@ -1,3 +1,6 @@
+var EventEmitter = require('events').EventEmitter
+var inherits = require('util').inherits
+
 module.exports = ChatController
 
 function ChatController (view, model) {
@@ -9,23 +12,28 @@ function ChatController (view, model) {
   this.model.on('new-chat', this.view.onMessage.bind(this.view))
   this.model.on('delete-all-messages', this.view.clear.bind(this.view))
 
-  var DOM = this.view.getDOM()
+  this.DOM = this.view.getDOM()
 
   // click handlers
-  DOM.$chatEnterButton.click(function (e) {
-    var text = DOM.$chatInput.val()
-    var username = self.model.getUsername()
-    self.model.selfMessage({username: username, message: text})
+  this.DOM.$chatEnterButton.click(function (e) {
+    self._submitMessage()
   })
 
   // key listeners
   var ENTER_KEY = 13
 
-  DOM.$chatInput.keydown(function (e) {
+  this.DOM.$chatInput.keydown(function (e) {
     if (e.keyCode === ENTER_KEY) {
-      var text = DOM.$chatInput.val()
-      var username = self.model.getUsername()
-      self.model.selfMessage({username: username, message: text})
+      self._submitMessage()
     }
   })
+}
+
+inherits(ChatController, EventEmitter)
+
+ChatController.prototype._submitMessage = function () {
+  var text = this.DOM.$chatInput.val()
+  var username = this.model.getUsername()
+  var msg = {username: username, message: text}
+  this.emit('chat:submit', msg)
 }

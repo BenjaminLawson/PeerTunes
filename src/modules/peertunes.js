@@ -12,12 +12,14 @@ var Tracker = require('bittorrent-tracker/client')
 var Mustache = require('mustache')
 var WebTorrent = require('webtorrent')
 var localforage = require('localforage')
+var Doc = require('crdt').Doc
 
 // modules
 var YT = require('./YT')
-var onPeer = require('./peer-handler')
 var Player = require('./player')
 var SongManager = require('./song-manager')
+var Lobby = require('./lobby')
+var HostedRoom = require('./hosted-room')
 
 // chat
 var ChatController = require('../controllers/chat-controller')
@@ -32,6 +34,11 @@ var QueueModel = require('../models/queue-model')
 // TODO: add element selectors to config
 function PeerTunes (config) {
   var self = this
+
+  if (!Peer.WEBRTC_SUPPORT) {
+    window.alert('This browser is unsupported. Please use a browser with WebRTC support.')
+    return
+  }
 
   this.config = config // TODO: use defaults if not provided
 
@@ -77,35 +84,28 @@ function PeerTunes (config) {
 
   this.isHost = false  // this peer is hosting a room
 
-  this.peers = [] // peers in swarm
-
-  this.peerId = new Buffer(hat(160), 'hex') // peer ID of this peer: new Buffer(hat(160), 'hex')
-  this.dummySelfPeer = null
   this.username = config.username
-
-  this.hostPeer = null // per object of room host
-
-  this.rooms = [] // [{peer, title}]
-
-  this.vote = 0 // vote for current video
-  this.rating = 0 // overall song rating
-
-  this.inQueue = false // if this peer is in DJ queue
-  this.isDJ = false // this peer is the dj
 
   config.player.torrentClient = this.torrentClient
   this.player = new Player(config.player)
 
   this.host = { // room data used by host
     meta: {title: 'Untitled'}, // room title
-    guests: [], // peers subscribed to room
-    djQueue: [], // peers in dj wait list
-    rating: 0, // total, updated on new vote or vote change
-    votes: {} // {peer: value}, keep track of past votes so total rating can be adjusted if guest changes vote
   }
 
   this.songManager = new SongManager()
   this.songManager.on('song-end', this.onSongEnd.bind(this))
+
+
+  // replace ascii with emoji
+  emojione.ascii = true
+
+  // lobby set up
+  this.room = null
+  this._doc = null
+  this._chatSet = null
+  this.lobby = this._joinLobby()
+
 
   // cache jQuery selectors
   this.$moshpit = $(config.selectors.moshpit)
@@ -114,56 +114,15 @@ function PeerTunes (config) {
   this.$joinQueueButton = $(config.selectors.joinQueueButton)
   this.$volumeSlider = $(config.selectors.volumeSlider)
 
-  
-}
-
-PeerTunes.prototype.init = function () {
-  var self = this
-
-  console.log('Initializing PeerTunes')
-
-  // replace ascii with emoji
-  emojione.ascii = true
-
-  if (!Peer.WEBRTC_SUPPORT) {
-    window.alert('This browser is unsupported. Please use a browser with WebRTC support.')
-    return
-  }
-
-  console.log('Your username: ', this.username)
-
-  this.dummySelfPeer = {username: this.username, id: this.peerId}
-
-  var broadcastChat = function (message) {
-    if (self.isHost) {
-      self.broadcastToRoom({msg: 'chat', value: message})
-    } else {
-      if (self.hostPeer != null) {
-        self.hostPeer.send(JSON.stringify({msg: 'chat', value: message}))
-      }
-    }
-
-    self.avatarChatPopover(message.username, message.message)
-  }
-  
-  // chat setup
-  this.chatModel.on('new-chat-self', broadcastChat)
-
-  
-
-  // set up tracker
-  this.tracker = new Tracker({
-    peerId: self.peerId,
-    announce: self.config.trackerURL,
-    infoHash: new Buffer(20).fill('01234567890123456787'), // temp, use url in future?
-    rtcConfig: self.config.rtc
-  })
-  this.tracker.start()
-  this.initTrackerListeners()
-
   // set up handlers
   this.initClickHandlers()
-  
+}
+
+PeerTunes.prototype.initClickHandlers = function () {
+  var self = this // cache since 'this' is bound in click callbacks
+
+  console.log('initializing click handlers')
+
   // key listeners
   var ENTER_KEY = 13
 
@@ -172,34 +131,6 @@ PeerTunes.prototype.init = function () {
       self.doSongSearch()
     }
   })
-}
-
-PeerTunes.prototype.initTrackerListeners = function () {
-  console.log('Initializing tracker event listeners')
-  this.tracker.on('peer', onPeer.bind(this))
-  this.tracker.on('update', function (data) {
-    // console.log('got an announce response from tracker: ' + data.announce)
-    // console.log('number of seeders in the swarm: ' + data.complete)
-    // console.log('number of leechers in the swarm: ' + data.incomplete)
-  })
-
-  this.tracker.on('error', function (err) {
-    // fatal client error!
-    console.log('Tracker Error:')
-    console.log(err)
-  })
-
-  this.tracker.on('warning', function (err) {
-    // a tracker was unavailable or sent bad data to the client. you can probably ignore it
-    console.log('Tracker Warning:')
-    console.log(err)
-  })
-}
-
-PeerTunes.prototype.initClickHandlers = function () {
-  var self = this // cache since 'this' is bound in click callbacks
-
-  console.log('initializing click handlers')
 
   this.$volumeSlider.on('change mousemove', function () {
     var volume = $(this).val() / 100
@@ -235,12 +166,15 @@ PeerTunes.prototype.initClickHandlers = function () {
   $('#btn-create-room').click(function (e) {
     console.log('create/destroy room clicked')
 
-    self.resetRoom()
+    if (self.room) {
+      self.resetRoom()
+    }
 
     if (self.isHost) { // button = Destroy Room
       self.songManager.end()
+      self.lobby.closeRoom()
+
       $(this).text('Create Room')
-      self.stopHosting()
     } else {
       $('#createRoomModal').modal('toggle')
     }
@@ -255,8 +189,12 @@ PeerTunes.prototype.initClickHandlers = function () {
     }
     $('#create-room-form-group').removeClass('has-error')
     $('#btn-create-room').text('Destroy Room')
-    self.leaveRoom()
-    self.startHosting($('#roomNameInput').val())
+    if (self.room) {
+      self.leaveRoom()
+    }
+    var roomName = $('#roomNameInput').val()
+    self.room = self.lobby.createRoom(roomName)
+    self.joinDocForRoom(self.room)
     $('#roomNameInput').val('')
   })
 
@@ -343,6 +281,68 @@ PeerTunes.prototype.initClickHandlers = function () {
   })
 }
 
+PeerTunes.prototype._joinLobby = function () {
+  var self = this
+  
+  var lobby = new Lobby({
+    maxPeers: 6,
+    public: self.config.keys.public,
+    private: self.config.keys.private,
+    nicename: self.username
+  })
+
+  lobby.on('rooms:add', function (room) {
+    console.log('new room added to lobby: ', room)
+  })
+
+  return lobby
+}
+
+// pubkey is base64 encoded public key of room host
+PeerTunes.prototype.joinRoom = function (pubkey) {
+  var self = this
+  console.log('joining room')
+
+  pubkey = atob(pubkey)
+
+  this.room = new HostedRoom({
+    hostKey: pubkey,
+    isHost: false,
+    public: self.config.keys.public,
+    private: self.config.keys.private,
+    nicename: self.username
+  })
+
+  this.joinDocForRoom(this.room)
+
+  $('#btn-leave-room').show()
+}
+
+PeerTunes.prototype.joinDocForRoom = function (room) {
+  var self = this
+  
+  this._doc = new Doc()
+  this._chatSeq = this._doc.createSeq('type', 'chat')
+
+  this._chatSeq.on('add', function (row) {
+    row = row.toJSON()
+    self.chatModel.addMessage({username: row.username, message: row.message})
+  })
+
+  this.chatController.on('chat:submit', function (msg) {
+    self._doc.add({type: 'chat', username: msg.username, message: msg.message})
+  })
+
+  // set up crdt docs
+  room.on('peer:connect', function (peer, mux) {
+    var docStream = mux.createSharedStream('peertunes-doc')
+    docStream.pipe(self._doc.createStream()).pipe(docStream)
+    docStream.on('end', function () {
+      console.log('peertunes-docStream ended')
+    })
+  })
+}
+
 PeerTunes.prototype.startHosting = function (title) {
   console.log('Starting hosting')
 
@@ -367,42 +367,6 @@ PeerTunes.prototype.stopHosting = function () {
   this.isHost = false
   this.removeRoom(this.dummySelfPeer)
   // TODO: stop player
-}
-
-// TODO: use this everywhere
-PeerTunes.prototype.sendTo = function (data, peer) {
-  console.log('Sending data ', data, ' to peer ', peer.username)
-  peer.send(JSON.stringify(data))
-}
-
-// TODO: array of peers parameter to replace broadcastToRoom
-PeerTunes.prototype.broadcast = function (data, exception) {
-  // TODO: only send message to subscribing peers
-  console.log('Broadcasting to Swarm: ', data)
-  data = JSON.stringify(data) // only need to stringify once
-  this.peers.forEach(function (peer) {
-    if (peer.connected && peer !== exception) peer.send(data)
-  })
-}
-
-PeerTunes.prototype.broadcastToRoom = function (data, exception) {
-  // TODO: only send message to subscribing peers
-  console.log('Broadcasting To Room: ', data)
-  data = JSON.stringify(data) // only need to stringify once
-  this.host.guests.forEach(function (peer) {
-    if (peer.connected && peer !== exception) peer.send(data)
-  })
-}
-
-PeerTunes.prototype.addRoom = function (peer, title) {
-  console.log('Adding room: ' + title)
-  this.rooms.push({peer: peer, title: title})
-}
-
-PeerTunes.prototype.removeRoom = function (peer) {
-  console.log('Removing ' + peer.username + "'s room")
-  var index = this.rooms.map(function (r) { return r.peer }).indexOf(peer)
-  if (index > -1) this.rooms.splice(index, 1)
 }
 
 PeerTunes.prototype.leaveRoom = function () {
@@ -431,46 +395,23 @@ PeerTunes.prototype.refreshRoomListing = function () {
 
   var $ul = $('<ul>').addClass('list-unstyled')
   var self = this
-  $.each(this.rooms, function (i, room) {
-    var id = room.peer.username
-    var params = {id: id, title: room.title}
-    console.log('Rendering template for: ')
-    console.log(params)
+  $.each(this.lobby.getRooms(), function (i, room) {
+    var id = room.creator
+    var params = {id: id, title: room.name}
+    //console.log('Rendering template for: ')
+    //console.log(params)
     var $row = $(Mustache.render(template, params))
     $row.click(function () {
       $('#roomModal').modal('toggle')
       console.log('Joining room: ' + id)
-      self.connectToHost(room.peer)
+      self.joinRoom(room.pubkey)
+      
     })
     $ul.append($row)
   })
   $('#roomModal .modal-body').html($ul)
 }
 
-PeerTunes.prototype.connectToHost = function (hostPeer) {
-  if (this.isHost) {
-    // host tries to connect to self
-    if (this.peerId === hostPeer.id) return
-
-    // TODO: make nonblocking HUD
-    var doDestroy = confirm('Joining a room will destroy your room!')
-    if (!doDestroy) return
-
-    this.stopHosting()
-    this.resetRoom()
-    $('#create-room').text('Create Room')
-  }
-
-  console.log('connecting to peer: ' + hostPeer.id)
-
-  this.hostPeer = hostPeer
-
-  // TODO: fix race condition?
-  hostPeer.send(JSON.stringify({username: this.username}))
-  hostPeer.send(JSON.stringify({msg: 'join-room'}))
-
-  $('#btn-leave-room').show()
-}
 
 PeerTunes.prototype.addAvatar = function (id, headbob) {
   console.log('Adding avatar for ', id, ' with headbob ', (headbob === true))
@@ -637,33 +578,6 @@ PeerTunes.prototype.removeDJFromQueue = function (peer) {
     }
   }
   console.log('Queue after:', this.host.djQueue)
-}
-
-
-// HOST function
-PeerTunes.prototype.cleanupPeer = function (peer) {
-  var self = this
-
-  if (this.isHost) {
-    // remove peer if it is in array
-    var removedGuest = false
-    var removedGuestUsername = ''
-    this.host.guests = this.host.guests.filter(function (guest) {
-      if (guest !== peer) {
-        return true
-      }
-      self.removeAvatar(guest.username)
-      removedGuestUsername = guest.username
-      removedGuest = true
-      return false
-    })
-    // only check djQueue if removed peer was a guest
-    if (removedGuest) {
-      this.broadcastToRoom({msg: 'leave', value: removedGuestUsername})
-      this.host.djQueue = this.host.djQueue.filter(function (dj) { return dj !== peer })
-    }
-    return
-  }
 }
 
 //callback when seeding finished setting up
