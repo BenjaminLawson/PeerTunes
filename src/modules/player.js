@@ -2,6 +2,8 @@
 /* Globals */
 //var $, moment, videojs
 
+// TODO: 'strategy' modules that handle a content type
+
 // modules
 var TagReader = require('./tag-reader')
 

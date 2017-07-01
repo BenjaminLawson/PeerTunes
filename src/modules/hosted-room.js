@@ -48,7 +48,7 @@ function HostedRoom (opts) {
   }, HEARTBEAT_INTERVAL)
   
   this.on('peer:connect', function (peer, mux) {
-    var crdtStream = mux.createSharedStream('_crdt')
+    var crdtStream = mux.createSharedStream('_crdt') // name unlikely to be used downstream
     crdtStream.pipe(self._doc.createStream()).pipe(crdtStream)
     crdtStream.on('end', function () {
       console.log('crdtStream ended')

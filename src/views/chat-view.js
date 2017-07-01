@@ -37,6 +37,7 @@ ChatView.prototype._appendMessage = function (msg) {
   var renderedMessage = Mustache.render(this.messageTemplate, msg)
   
   var atBottomBefore = this._isScrolledToBottom()
+
   this.DOM.$chatList.append(renderedMessage)
   if (atBottomBefore) {
     this._scrollToBottom()

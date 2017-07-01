@@ -5,6 +5,17 @@ module.exports = ChatModel
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 
+/*
+message schema:
+
+{
+userId: string,
+username: string,
+message: string
+}
+
+*/
+
 function ChatModel (config) {
   this.maxMessageLength = config.maxMessageLength
   this.messages = []
@@ -32,7 +43,6 @@ ChatModel.prototype.receiveMessage = function (message) {
 }
 
 ChatModel.prototype.addMessage = function (message) {
-
   this.messages.push(message)
 
   this.emit('new-chat', message)

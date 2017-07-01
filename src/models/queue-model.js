@@ -24,15 +24,18 @@ QueueModel.prototype.addSong = function (song) {
   this.songs.push(song)
   this._save()
   this.emit('add-song', song)
+  this.emit('queue:change', this.songs)
 }
 
 QueueModel.prototype.cycle = function () {
-  if (this.songs.length > 0) {
-    var front = this.songs.pop()
-    this.songs.push(front)
-    this._save()
-    this.emit('cycle')
-  }
+  if (this.songs.length === 0) return
+
+  var front = this.songs.pop()
+  this.songs.push(front)
+  this._save()
+  this.emit('cycle')
+  this.emit('queue:change', this.songs)
+
 }
 
 QueueModel.prototype.length = function () {
@@ -50,11 +53,13 @@ QueueModel.prototype.removeSongAtPosition = function (index) {
   this.songs.splice(index, 1)
   this._save()
   this.emit('remove-song', index)
+  this.emit('queue:change', this.songs)
 }
 
 QueueModel.prototype.moveToTop = function (index) {
   this.move(index, 0)
   this.emit('move-to-top', index)
+  this.emit('queue:change', this.songs)
 }
 
 // triggered by drag/drop reordering on view
@@ -63,6 +68,8 @@ QueueModel.prototype.move = function (from, to) {
   var removedSong = removedSongArray[0]
   this.songs.splice(to, 0, removedSong)
   this._save()
+
+  this.emit('queue:change', this.songs)
 }
 
 QueueModel.prototype._save = function () {

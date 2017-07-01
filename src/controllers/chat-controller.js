@@ -33,7 +33,7 @@ inherits(ChatController, EventEmitter)
 
 ChatController.prototype._submitMessage = function () {
   var text = this.DOM.$chatInput.val()
-  var username = this.model.getUsername()
-  var msg = {username: username, message: text}
-  this.emit('chat:submit', msg)
+  //var username = this.model.getUsername()
+  //var msg = {username: username, message: text}
+  this.emit('chat:submit', text)
 }
