@@ -41,6 +41,8 @@ https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL
 to free up memory
 */
 var JSEncrypt = require('jsencrypt').JSEncrypt
+var sodium = require('sodium-universal')
+
 
 var PeerTunes = require('./modules/peertunes')
 
@@ -56,20 +58,21 @@ function init () {
   config.username = $('#input-username').val()
   
   console.log('generating keypair...')
-  
-  var keypair = new JSEncrypt({default_key_size: 512})
-  keypair.getKey(function () {
 
-    config.keys = {
-      private: keypair.getPrivateKey(),
-      public: keypair.getPublicKey()
-    }
+  var private = Buffer.alloc(sodium.crypto_sign_SECRETKEYBYTES)
+  var public = Buffer.alloc(sodium.crypto_sign_PUBLICKEYBYTES)
 
-    console.log(config.keys)
+  // create elliptic curve key pair
+  sodium.crypto_sign_keypair(public, private)
 
-    var PT = new PeerTunes(config)
+  config.keys = {
+    private: private,
+    public: public
+  }
 
-    $('#welcome').css('top', '100%') // slide down out of view
-  })
-  
+  console.log(config.keys.private.toString('base64'))
+
+  var PT = new PeerTunes(config)
+
+  $('#welcome').css('top', '100%') // slide down out of view
 }

@@ -63,7 +63,7 @@ P2PLobby.prototype.createRoom = function (name) {
     clearInterval(this.roomInterval)
   }
 
-  var roomRow = this._doc.add({type: 'room', pubkey: btoa(self.public), name: name, creator: self.nicename})
+  var roomRow = this._doc.add({type: 'room', pubkey: self.public.toString('base64') , name: name, creator: self.nicename})
   this.myRoomId = roomRow.toJSON().id
 
 
