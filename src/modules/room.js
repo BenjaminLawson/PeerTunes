@@ -20,7 +20,7 @@ var TRACKER_URLS = ['wss://tracker.btorrent.xyz']
 
 function Room (opts) {
     // peerID and roomID must be SHA1 hash of public keys (20 bytes / 40 hex chars)
-    console.log('Room opts: ', opts)
+    //console.log('Room opts: ', opts)
     
     this.roomId = opts.roomID // SHA1 hash of room host
     
@@ -131,7 +131,7 @@ Room.prototype._trackerInit = function (opts) {
 
             // TODO: don't emit if peer will be destroyed because it is furthest
             peer.pipe(mux).pipe(peer)
-            console.log('emitting peer:connect')
+            //console.log('emitting peer:connect')
             self.emit('peer:connect', peer, mux)
             
             if (Object.keys(self.peers).length > self.maxPeers) {

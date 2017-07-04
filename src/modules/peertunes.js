@@ -348,7 +348,6 @@ PeerTunes.prototype._onJoinRoom = function () {
     
     // create avatars for future users
     this.room.on('user:join', function (row) {
-        console.log('peertunes user:join')
         self.addAvatar(row.id, row.nicename, false)
     })
 }
@@ -362,8 +361,6 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
      // create replication streams
     // TODO: figure out why this isn't being rtriggere
     room.on('peer:connect', function (peer, mux) {
-        console.log('peertunes peer:connect, connecting streams')
-        
         var docStream = mux.createSharedStream('peertunes-doc')
         docStream.pipe(self._doc.createStream()).pipe(docStream)
         docStream.on('end', function () {
@@ -397,11 +394,12 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
 
     
     // make hypercore using host's public key for song history
-    // TODO: use sparse option
+    // TODO: sparse download starting from most recent block
     var opts = {
         createIfMissing: false,
         overwrite: true,
-        valueEncoding: 'json'
+        valueEncoding: 'json',
+        sparse: false // TODO: true
     }
 
     if (this.room.isHost) opts.secretKey = this.keys.private
@@ -415,16 +413,20 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
         console.log('hypercore error: ', err)
     })
 
-    // TODO: figure out why this isn't triggered on clients
     this._songHistoryFeed.on('append', function () {
         console.log('song history append')
         self._songHistoryFeed.get(self._songHistoryFeed.length - 1, function (err, data) {
             console.log('appended block: ', data)
+
+            if (!self.room.isHost) {
+                var currentTime = Date.now() - data.startTime
+                self.player.play(data.song, currentTime)
+            }
         })
     })
 
-    if (this.room.isHost) {
-        this._songHistoryFeed.on('ready', function () {
+    this._songHistoryFeed.on('ready', function () {
+        if (self.room.isHost) {
             if (!self._songHistoryFeed.writable) {
                 console.log('Error: song history feed not writable even though peer is host')
                 return
@@ -447,8 +449,24 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
                     self.player.play(row.song, 0)
                 }
             })
-        })
-    }
+        }
+        else {
+            // only download the latest block
+            // TODO: not synced with host when ready emitted!
+            self._songHistoryFeed.update(1, function () {
+                console.log('song history feed length = ', self._songHistoryFeed.length)
+                //self._songHistoryFeed.download({start: self._songHistoryFeed.length - 1, end: -1, linear: true})
+            })
+            /*
+              if (self._songHistoryFeed.length > 0) {
+              self._songHistoryFeed.download({
+              start: self._songHistoryFeed.length - 1,
+              end: self._songHistoryFeed.length
+                })
+            }
+*/
+        }
+    })
 
 }
 

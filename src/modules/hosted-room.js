@@ -14,7 +14,7 @@ var HEARTBEAT_INTERVAL = 30000 // 30 seconds
 
 function HostedRoom (opts) {
     var self = this
-    console.log('HostedRoom opts: ', opts)
+    //console.log('HostedRoom opts: ', opts)
     
     // TODO: determine isHost by comparing hash of hostKey and public key
     this.isHost = opts.isHost || false
@@ -54,7 +54,6 @@ function HostedRoom (opts) {
     }, HEARTBEAT_INTERVAL)
     
     this.on('peer:connect', function (peer, mux) {
-        console.log('hosted-room peer:connect')
         var crdtStream = mux.createSharedStream('_crdt') // name unlikely to be used downstream
         crdtStream.pipe(self._doc.createStream()).pipe(crdtStream)
         crdtStream.on('end', function () {
