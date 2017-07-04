@@ -28,9 +28,11 @@ QueueModel.prototype.addSong = function (song) {
 }
 
 QueueModel.prototype.cycle = function () {
-  if (this.songs.length === 0) return
+    if (this.songs.length <= 1) return
 
-  var front = this.songs.pop()
+    console.log('songQueue cycling songs')
+
+  var front = this.songs.shift()
   this.songs.push(front)
   this._save()
   this.emit('cycle')
@@ -75,7 +77,7 @@ QueueModel.prototype.move = function (from, to) {
 QueueModel.prototype._save = function () {
   var queueJSON = {queue: this.songs}
   localforage.setItem(this.localstorageKey, queueJSON).then(function (value) {
-    console.log('Queue saved')
+    //console.log('Queue saved')
   }).catch(function (err) {
     console.log('Error saving queue: ', err)
   })

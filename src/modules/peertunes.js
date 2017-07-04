@@ -72,14 +72,25 @@ function PeerTunes (config) {
     })
 
     this.queueModel.on('queue:change', function (q) {
-        if (!self.isInDJQueue()) return
+        console.log('peertunes queue:change')
+        if (!self.isInDJQueue()) {
+            console.log('user not in dj queue, skipping song update')
+            return
+        }
         var row = self._djSeq.get('dj-'+self.id).toJSON()
 
         // TODO: leave dj queue if queue becomes empty?
+        // only set new value if top song actually changed
+        console.log('song queue: ', q)
         var front = q[0]
         if (front && (front.id !== row.song.id || front.source !== row.song.source)) {
             console.log('top changed, syncing dj queue')
             self._djSeq.get('dj-'+self.id).set('song', front)
+        }
+        else {
+            console.log('song update condition failed')
+            console.log('front: ', front)
+            console.log('row.song: ', row.song)
         }
     })
 
@@ -110,10 +121,6 @@ function PeerTunes (config) {
 
     config.player.torrentClient = this.torrentClient
     this.player = new Player(config.player)
-
-    this.host = { // room data used by host
-        meta: {title: 'Untitled'}, // room title
-    }
 
     this.songManager = new SongManager()
     this.songManager.on('song-end', this.onSongEnd.bind(this))
@@ -404,9 +411,9 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
 
     if (this.room.isHost) opts.secretKey = this.keys.private
 
-    console.log('hypercore opts: ', opts)
+    //console.log('hypercore opts: ', opts)
 
-    console.log('hostKey: ', this.room.hostKey)
+    //console.log('hostKey: ', this.room.hostKey)
     this._songHistoryFeed = hypercore(ram, this.room.hostKey, opts)
 
     this._songHistoryFeed.on('error', function (err) {
@@ -414,13 +421,20 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     })
 
     this._songHistoryFeed.on('append', function () {
-        console.log('song history append')
+        //console.log('song history append')
         self._songHistoryFeed.get(self._songHistoryFeed.length - 1, function (err, data) {
             console.log('appended block: ', data)
 
-            if (!self.room.isHost) {
-                var currentTime = Date.now() - data.startTime
-                self.player.play(data.song, currentTime)
+            var currentTime = Date.now() - data.startTime
+            self.player.play(data.song, currentTime)
+            self.songManager.play(data.song)
+
+            // if this user is the new DJ, cycle song queue
+            console.log('data.userId: ', data.userId, ', self.id: ', self.id)
+            console.log(data)
+            if (data.userId === self.id) {
+                console.log('user became DJ, cycling song queue')
+                self.queueModel.cycle()
             }
         })
     })
@@ -436,35 +450,9 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
                 row = row.toJSON()
                 if (self._djSeq.length() === 1) {
                     // queue was empty, this is first dj
-
-                    // TODO: use callback to check for error
-                    self._songHistoryFeed.append({
-                        startTime: Date.now(),
-                        song: row.song,
-                        userId: row.id,
-                        username: row.username
-                    })
-
-                    // TODO: start first song playing
-                    self.player.play(row.song, 0)
+                    self.playNextDJSong()
                 }
             })
-        }
-        else {
-            // only download the latest block
-            // TODO: not synced with host when ready emitted!
-            self._songHistoryFeed.update(1, function () {
-                console.log('song history feed length = ', self._songHistoryFeed.length)
-                //self._songHistoryFeed.download({start: self._songHistoryFeed.length - 1, end: -1, linear: true})
-            })
-            /*
-              if (self._songHistoryFeed.length > 0) {
-              self._songHistoryFeed.download({
-              start: self._songHistoryFeed.length - 1,
-              end: self._songHistoryFeed.length
-                })
-            }
-*/
         }
     })
 
@@ -483,26 +471,21 @@ PeerTunes.prototype.joinDJQueue = function () {
     // must not already be in queue
     if (this.queueModel.length() === 0
         || !this._djSeq
-        || this._djSeq.has(this.id))
+        || this._djSeq.has('dj-'+this.id)) {
+        console.log('unable to join DJ queue')
         return false
+    }
 
-    this._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, username: self.username, song: self.queueModel.front()})
-    console.log(this._djSeq.toJSON())
+    this._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, userId: self.id, username: self.username, song: self.queueModel.front()})
+    console.log('djSeq: ', this._djSeq.toJSON())
     return true
 }
 
 PeerTunes.prototype.cycleDJQueue = function () {
     if (!this._djSeq || this._djSeq.length() <= 1) return
 
+    // moves first dj after last dj
     this._djSeq.after(this._djSeq.first(), this._djSeq.last())
-}
-
-PeerTunes.prototype.resetRoom = function () {
-    $('.audience-member').tooltip('destroy')
-    this.$moshpit.html('')
-    this.chatModel.deleteAllMessages()
-    this.player.end()
-    $('#btn-leave-room').hide()
 }
 
 PeerTunes.prototype.refreshRoomListing = function () {
@@ -524,6 +507,7 @@ PeerTunes.prototype.refreshRoomListing = function () {
         $row.click(function () {
             $('#roomModal').modal('toggle')
             console.log('Joining room: ' + id)
+            
             self.joinRoom(room.pubkey)
             
         })
@@ -532,100 +516,45 @@ PeerTunes.prototype.refreshRoomListing = function () {
     $('#roomModal .modal-body').html($ul)
 }
 
-
-// HOST function
-PeerTunes.prototype.playNextDJSong = function () {
-    var self = this
-
-    // reset all likes
-    // TODO: map doesn't modify original?
-    this.host.guests.map(function (guest) {
-        guest.like = false
-        return guest
-    })
-
-    if (this.host.djQueue[0] === this.dummySelfPeer) this.isDJ = true
-
-    console.log('play next DJ, isDJ: ', this.isDJ)
-    console.log('Play next DJ from queue with length ', this.host.djQueue.length)
-    if (this.host.djQueue.length > 0) {
-        // host is first in dj queue
-        if (this.isDJ) {
-            console.log('Host (you) is the next DJ')
-
-            var meta = this.queueModel.front()
-
-            this.songManager.play(meta)
-            this.player.play(meta, 0) // play in host's player
-
-            if (meta.source === 'MP3') {
-                // TODO: wait until metadata is loaded => send duration
-                // start seeding file to guests
-                this.seedFileWithKey(meta.id, function (torrent) {
-                    meta.infoHash = torrent.infoHash
-                    self.songManager.setInfoHash(torrent.infoHash)
-                    self.broadcastToRoom({msg: 'song', value: meta, dj: self.username, currentTime: 0}, null)
-                })
-            } else {
-                this.broadcastToRoom({msg: 'song', value: meta, dj: this.username, currentTime: 0}, null)
-            }
-        } else { // host is not first in queue
-            // ask front dj for song
-            // TODO: set timeout for skipping this dj if he doesn't respond
-            this.host.djQueue[0].send(JSON.stringify({msg: 'queue-front'}))
-        }
-
-        return
-    }
-    console.log('DJ queue empty => ending song')
-    this.player.end()
-    this.broadcastToRoom({msg: 'end-song'})
-}
-
-//executes before next song, or after last song
-//TODO: getting called immediately for mp3s?
-/*
-  types of song end reactions:
-  - host needs to manage djs
-  - users & host need to know when song ended for head bobbing, title, rating
-  queue cycling
-  - player
-*/
 PeerTunes.prototype.onSongEnd = function () {
     var self = this
 
     console.log('onSongEnd')
 
-    this.stopAllHeadBobbing()
+    //this.stopAllHeadBobbing()
     this.player.end()
     this.player.setTitle('')
-    this.vote = 0
-    // this.updateProgress(0) //gets overridden :(
 
-    console.log('Songtimeout queue length: ', this.host.djQueue.length)
-
-    console.log('songtimeout isDJ: ', this.isDJ)
-    if (this.isDJ) {
-        endDJ()
-    }
-
-    if (this.isHost) {
-        this.host.rating = 0
-        this.host.votes = []
-        if (this.host.djQueue.length > 0) {
-            console.log('Shifting queue:', this.host.djQueue)
-            var front = this.host.djQueue.shift()
-            this.host.djQueue.push(front)
+    if (this.room.isHost) {
+        if (this._djSeq.length() > 1) {
+            // move front dj to back of queue
+            console.log('cycling DJs')
+            this.cycleDJQueue()
         }
 
         this.playNextDJSong()
     }
+}
 
-    function endDJ () {
-        console.log('DJing ended')
-        self.songQueue.cycle()
-        self.isDJ = false
+PeerTunes.prototype.playNextDJSong = function () {
+    var self = this
+
+    if (this._djSeq.length() === 0) {
+        console.log('no DJs in queue, nothing to play')
+        return
     }
+
+    console.log('playing next dj song')
+
+    var row = this._djSeq.first().toJSON()
+    var song = row.song
+
+    this._songHistoryFeed.append({
+        startTime: Date.now(),
+        song: song,
+        userId: row.userId,
+        username: row.username
+    })
 }
 
 //callback when seeding finished setting up
@@ -737,6 +666,8 @@ PeerTunes.prototype.avatarChatPopover = function (id, content) {
     $user.webuiPopover('show')
 }
 
+
+// TODO: move to own model/controller
 PeerTunes.prototype.doSongSearch = function () {
     var self = this
 
@@ -767,6 +698,14 @@ PeerTunes.prototype.doSongSearch = function () {
             self.queueModel.addSong(meta)
         })
     })
+}
+
+PeerTunes.prototype.resetRoom = function () {
+    $('.audience-member').tooltip('destroy')
+    this.$moshpit.html('')
+    this.chatModel.deleteAllMessages()
+    this.player.end()
+    $('#btn-leave-room').hide()
 }
 
 module.exports = PeerTunes
