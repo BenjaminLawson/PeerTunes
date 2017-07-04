@@ -11,10 +11,6 @@ Future features:
 -drawing (maybe dj whiteboard, or draw and then drawing appears above head)
 -let user pause, but keep timer so on play it jumps to current time
 
-TODO: make lobby system function that requires response
-- callback for on response
-- use timeout, after which no response callback is called
-
 TODO: use RSA keys to prove identities & make friend feature
 -request friend
 -friend sends public key

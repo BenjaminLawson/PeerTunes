@@ -84,7 +84,6 @@ QueueModel.prototype._save = function () {
 QueueModel.prototype.restore = function (callback) {
   var self = this
   localforage.getItem(this.localstorageKey).then(function (value) {
-    console.log('Queue restored')
     self.songs = value.queue
     callback()
   }).catch(function (err) {
