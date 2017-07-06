@@ -42,7 +42,7 @@ Room.prototype.leave = function () {
     var self = this
     console.log('leaving room')
     Object.keys(this.peers).forEach(function (key, index) {
-        var peer = self.peers[key].peer
+        var peer = self.peers[key]
         peer.destroy()
         delete self.peers[key]
     })
@@ -78,8 +78,6 @@ Room.prototype._destroyFurthestPeer = function () {
 Room.prototype._trackerInit = function (opts) {
     var self = this
 
-    console.log('trackerInit')
-
     this.tracker = new Tracker({
         infoHash: opts.roomID || new Buffer(20).fill('p2p-room'), // hex string or Buffer
         peerId: self.peerId, // hex string or Buffer
@@ -94,7 +92,7 @@ Room.prototype._trackerInit = function (opts) {
     })
 
     this.tracker.on('update', function (data) {
-        console.log('got an announce response from tracker: ' + data.announce)
+        //console.log('got an announce response from tracker: ' + data.announce)
         //console.log('number of seeders in the swarm: ' + data.complete)
         //console.log('number of leechers in the swarm: ' + data.incomplete)
     })
@@ -102,7 +100,7 @@ Room.prototype._trackerInit = function (opts) {
     this.tracker.on('peer', function (peer) {
         if (peer.id in self.peers) return
         console.log('found a peer: ', peer.id)
-        console.log('peer distance: ', distance(peer.id, self.peerId))
+        //console.log('peer distance: ', distance(peer.id, self.peerId))
 
         if (peer.connected) onConnect()
         else peer.once('connect', onConnect)

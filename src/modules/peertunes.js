@@ -74,23 +74,17 @@ function PeerTunes (config) {
     this.queueModel.on('queue:change', function (q) {
         console.log('peertunes queue:change')
         if (!self.isInDJQueue()) {
-            console.log('user not in dj queue, skipping song update')
+            //console.log('user not in dj queue, skipping song update')
             return
         }
         var row = self._djSeq.get('dj-'+self.id).toJSON()
 
         // TODO: leave dj queue if queue becomes empty?
         // only set new value if top song actually changed
-        console.log('song queue: ', q)
         var front = q[0]
         if (front && (front.id !== row.song.id || front.source !== row.song.source)) {
-            console.log('top changed, syncing dj queue')
+            //console.log('top changed, syncing dj queue')
             self._djSeq.get('dj-'+self.id).set('song', front)
-        }
-        else {
-            console.log('song update condition failed')
-            console.log('front: ', front)
-            console.log('row.song: ', row.song)
         }
     })
 
@@ -331,6 +325,10 @@ PeerTunes.prototype.joinRoom = function (pubkey) {
     var self = this
 
     console.log('joining room with key ', pubkey)
+
+    // leave lobby
+    this.lobby.leave()
+    this.lobby = null
 
     this.room = new HostedRoom({
         hostKey: pubkey,

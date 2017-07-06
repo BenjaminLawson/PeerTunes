@@ -30,7 +30,7 @@ QueueModel.prototype.addSong = function (song) {
 QueueModel.prototype.cycle = function () {
     if (this.songs.length <= 1) return
 
-    console.log('songQueue cycling songs')
+    //console.log('songQueue cycling songs')
 
   var front = this.songs.shift()
   this.songs.push(front)

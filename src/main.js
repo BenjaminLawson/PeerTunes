@@ -35,6 +35,8 @@ TODO: dj queue view
 TODO: use revokeObjectURL
 https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL
 to free up memory
+
+TODO: convert all times to same timezone
 */
 var JSEncrypt = require('jsencrypt').JSEncrypt
 var sodium = require('sodium-universal')
