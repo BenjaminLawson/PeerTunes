@@ -131,7 +131,11 @@ function PeerTunes (config) {
     this._doc = null
     this._chatSet = null
     this._djSeq = null
-    this._songHistorySeq = null
+    this._songHistoryFeed = null
+
+    // streams
+    this.docStream = null
+    this.hyperStream = null
 
 
     // cache jQuery selectors
@@ -140,6 +144,7 @@ function PeerTunes (config) {
     this.$dislikeButton = $(config.selectors.dislikeButton)
     this.$joinQueueButton = $(config.selectors.joinQueueButton)
     this.$volumeSlider = $(config.selectors.volumeSlider)
+    this.$leaveButton = $(config.navBar.leaveButton)
 
     // set up handlers
     this.initClickHandlers()
@@ -214,6 +219,7 @@ PeerTunes.prototype.initClickHandlers = function () {
         }
         $('#create-room-form-group').removeClass('has-error')
         $('#btn-create-room').text('Destroy Room')
+        
         if (self.room) {
             self.leaveRoom()
         }
@@ -225,7 +231,7 @@ PeerTunes.prototype.initClickHandlers = function () {
         $('#roomNameInput').val('')
     })
 
-    $('#btn-leave-room').click(function (e) {
+    this.$leaveButton.click(function (e) {
         $(this).hide()
         self.leaveRoom()
     })
@@ -240,7 +246,6 @@ PeerTunes.prototype.initClickHandlers = function () {
         }
 
         var inQueue = self._djSeq.has('dj-'+self.id)
-
         
         if (!inQueue) {
             // join dj queue
@@ -253,7 +258,7 @@ PeerTunes.prototype.initClickHandlers = function () {
             return
         }
         
-        // leave dj queue
+        // if in dj queue, leave dj queue
         self._djSeq.rm('dj-'+self.id)
         console.log('left DJ queue')
         $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
@@ -265,32 +270,10 @@ PeerTunes.prototype.initClickHandlers = function () {
 
     this.$likeButton.click(function (e) {
         console.log('Rate +1')
-        if (self.vote === 0 || self.vote === -1) {
-            $('#user-' + self.username + ' .audience-head').addClass('headbob-animation')
-            if (self.isHost) {
-                self.rating++
-                // console.log('Rating: ' + self.rating)
-                self.broadcast({msg: 'rate', value: {rating: self.rating, id: self.username, action: 1}}, null)
-            } else {
-                self.hostPeer.send(JSON.stringify({msg: 'rate', value: 1}))
-            }
-            self.vote = 1
-        }
     })
 
     this.$dislikeButton.click(function (e) {
         console.log('Rate -1')
-        if (self.vote === 1 || self.vote === 0) {
-            $('#user-' + self.username + ' .audience-head').removeClass('headbob-animation')
-            if (self.isHost) {
-                self.rating--
-                console.log('Rating: ' + self.rating)
-                self.broadcast({msg: 'rate', value: {rating: self.rating, id: self.username, action: -1}}, null)
-            } else {
-                self.hostPeer.send(JSON.stringify({msg: 'rate', value: -1}))
-            }
-            self.vote = -1
-        }
     })
     // room modal
     $('button[data-target="#roomModal"]').click(function (event) {
@@ -357,6 +340,11 @@ PeerTunes.prototype._onJoinRoom = function () {
     })
 }
 
+PeerTunes.prototype.closeStreams = function () {
+    if (this.hyperStream) this.hyperStream.destroy()
+    if (this.docStream) this.docStream.destroy()
+}
+
 // joins p2p replicated data structures for room
 PeerTunes.prototype.joinDocForRoom = function (room) {
     var self = this
@@ -364,17 +352,19 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     this._doc = new Doc()
 
      // create replication streams
-    // TODO: figure out why this isn't being rtriggere
     room.on('peer:connect', function (peer, mux) {
-        var docStream = mux.createSharedStream('peertunes-doc')
-        docStream.pipe(self._doc.createStream()).pipe(docStream)
-        docStream.on('end', function () {
-            console.log('peertunes-docStream ended')
+
+        self.docStream = self._doc.createStream()
+        var docSharedStream = mux.createSharedStream('peertunes-doc')
+        docSharedStream.pipe(self._doc.createStream()).pipe(docSharedStream)
+        docSharedStream.on('end', function () {
+            console.log('peertunes-docSharedStream ended')
         })
-        
-        var hyperStream = mux.createSharedStream('hypercore')
-        hyperStream.pipe(self._songHistoryFeed.replicate({live: true, encrypt: false})).pipe(hyperStream)
-        hyperStream.on('end', function () {
+
+        self.hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
+        var hyperSharedStream = mux.createSharedStream('hypercore')
+        hyperSharedStream.pipe(self.hyperStream).pipe(hyperSharedStream)
+        hyperSharedStream.on('end', function () {
             console.log('peertunes-hypercore stream ended')
         })
         
@@ -454,6 +444,41 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
         }
     })
 
+}
+
+PeerTunes.prototype.leaveRoom = function () {
+    var self = this
+    
+    if (!this.room) return
+
+
+    // TODO: destroy properly to prevent hyperore-ptotocol Error: remote timed out
+    this._songHistoryFeed.close(function (err) {
+        if (err) console.log('Error closing song history feed: ', err)
+
+        self._songHistoryFeed = null
+        
+        // cleans up peers and trackers
+        self.room.leave()
+        self.room = null
+    })
+
+    this._doc = null
+    this._chatSet = null
+    this._djSeq - null
+
+    this.songManager.end()
+
+
+    // resets room elements (chat, moshpit, etc)
+    this.resetRoom()
+}
+
+PeerTunes.prototype.resetRoom = function () {
+    $('.audience-member').tooltip('destroy')
+    this.$moshpit.html('')
+    this.chatModel.deleteAllMessages()
+    this.$leaveButton.hide()
 }
 
 PeerTunes.prototype.isInDJQueue = function () {
@@ -616,9 +641,7 @@ PeerTunes.prototype.addAvatar = function (id, nicename, headbob) {
     // popover init
     template = $('#popoverTmpl').html()
     Mustache.parse(template)
-    var showMenu = (id !== this.username) // don't show menu for self
-    console.log('Show menu for ', id, ': ', showMenu) // TODO: fix
-    params = {nicename: nicename, menu: showMenu}
+    params = {nicename: nicename}
     rendered = Mustache.render(template, params)
     $avatar.webuiPopover({title: '', content: rendered, placement: 'top', trigger: 'hover', padding: false})
 
@@ -633,7 +656,6 @@ PeerTunes.prototype.removeAvatar = function (id) {
 }
 
 PeerTunes.prototype.stopAllHeadBobbing = function () {
-    console.log('Stopping all head bobbing')
     $('.audience-head').removeClass('headbob-animation')
 }
 
@@ -684,6 +706,8 @@ PeerTunes.prototype.doSongSearch = function () {
             var rendered = Mustache.render(template, params)
             resultsHTML += rendered
         })
+
+        // append all at once for effeciency
         $('#song-search-results').append(resultsHTML)
 
         $('.song-search-result').click(function (e){
@@ -696,14 +720,6 @@ PeerTunes.prototype.doSongSearch = function () {
             self.queueModel.addSong(meta)
         })
     })
-}
-
-PeerTunes.prototype.resetRoom = function () {
-    $('.audience-member').tooltip('destroy')
-    this.$moshpit.html('')
-    this.chatModel.deleteAllMessages()
-    this.player.end()
-    $('#btn-leave-room').hide()
 }
 
 module.exports = PeerTunes

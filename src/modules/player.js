@@ -100,16 +100,13 @@ Player.prototype.play = function (data, time) {
 }
 
 Player.prototype.end = function () {
-    console.log('ending song')
+    console.log('player song end')
     if (this.player != null) {
         this.player.trigger('ended')
         this.player.pause()
     }
     this.setTitle('')
-
-    //TODO: move this to event listener
-    //self.stopAllHeadBobbing()
-
+    this.updateProgress(0)
 }
 
 /**
