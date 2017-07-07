@@ -9,6 +9,7 @@ var Doc = require('crdt').Doc
 var inherits = require('util').inherits
 var Room = require('./room')
 var crypto = require('crypto-browserify')
+var pump = require('pump')
 
 var HEARTBEAT_INTERVAL = 30000 // 30 seconds
 
@@ -53,9 +54,14 @@ function HostedRoom (opts) {
         self._myHeartbeat.set('time', Date.now())
     }, HEARTBEAT_INTERVAL)
     
-    this.on('peer:connect', function (peer, mux) {
+    this.on('peer:connect', function (peer) {
+        var mux = peer.mux
+        
         var crdtStream = mux.createSharedStream('_crdt') // name unlikely to be used downstream
-        crdtStream.pipe(self._doc.createStream()).pipe(crdtStream)
+        pump(crdtStream, self._doc.createStream(), crdtStream, function (err) {
+            //console.log('hosted-room crdt pipe closed', err)
+        })
+        //crdtStream.pipe(self._doc.createStream()).pipe(crdtStream)
         crdtStream.on('end', function () {
             console.log('crdtStream ended')
         })

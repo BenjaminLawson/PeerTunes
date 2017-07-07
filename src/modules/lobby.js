@@ -5,6 +5,7 @@ var Room = require('./room')
 var HostedRoom = require('./hosted-room')
 // TODO: switch to sodium-universal
 var crypto = require('crypto-browserify')
+var pump = require('pump')
 
 // TODO: room updates need to be signed so other peers can't change
 // room metadata not owned by them
@@ -42,10 +43,15 @@ function P2PLobby (opts) {
 
     this.myRoomId = null
 
-    this.on('peer:connect', function (peer, mux) {
+    this.on('peer:connect', function (peer) {
+        var mux = peer.mux
+        
         console.log('lobby peer:connect')
         var docStream = mux.createSharedStream('_doc')
-        docStream.pipe(self._doc.createStream()).pipe(docStream)
+        pump(docStream, self._doc.createStream(), docStream, function (err) {
+            //console.log('lobby doc pipe closed', err)
+        })
+        //docStream.pipe(self._doc.createStream()).pipe(docStream)
         docStream.on('end', function () {
             console.log('docStream ended')
         })

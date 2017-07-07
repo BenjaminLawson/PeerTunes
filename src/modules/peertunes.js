@@ -16,6 +16,7 @@ var Doc = require('crdt').Doc
 var crypto = require('crypto-browserify')
 var hypercore = require('hypercore')
 var ram = require('random-access-memory')
+var pump = require('pump')
 
 // modules
 var YT = require('./YT')
@@ -344,11 +345,11 @@ PeerTunes.prototype._onJoinRoom = function () {
     })
 }
 
+// TODO: destroy multiplex for peer
 PeerTunes.prototype.closeStreams = function () {
     var self = this
+    
     // closing hypercore replication stream prevents peer timeout error
-    //if (this.hyperStream) this.hyperStream.destroy()
-    //if (this.docStream) this.docStream.destroy()
     Object.keys(this.hyperStreams).forEach(function (key) {
         self.hyperStreams[key].destroy()
     })
@@ -365,12 +366,16 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     this._doc = new Doc()
 
      // create replication streams
-    room.on('peer:connect', function (peer, mux) {
+    room.on('peer:connect', function (peer) {
+        var mux = peer.mux
 
         var docStream = self._doc.createStream()
         self.docStreams[peer.id] = docStream
         var docSharedStream = mux.createSharedStream('peertunes-doc')
-        docSharedStream.pipe(docStream).pipe(docSharedStream)
+        pump(docSharedStream, docStream, docSharedStream, function (err) {
+            //console.log('doc pipe closed ', err)
+        })
+        //docSharedStream.pipe(docStream).pipe(docSharedStream)
         docSharedStream.on('end', function () {
             console.log('peertunes-docSharedStream ended')
         })
@@ -378,9 +383,12 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
         var hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
         self.hyperStreams[peer.id] = hyperStream
         var hyperSharedStream = mux.createSharedStream('hypercore')
-        hyperSharedStream.pipe(hyperStream).pipe(hyperSharedStream)
+        pump(hyperSharedStream, hyperStream, hyperSharedStream, function (err) {
+            //console.log('hyper pipe closed ', err)
+        })
+        //hyperSharedStream.pipe(hyperStream).pipe(hyperSharedStream)
         hyperSharedStream.on('end', function () {
-            console.log('peertunes-hypercore stream ended')
+            //console.log('peertunes-hypercore stream ended')
         })
         
     })

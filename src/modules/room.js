@@ -112,6 +112,7 @@ Room.prototype._trackerInit = function (opts) {
 
             peer.once('close', function () {
                 console.log('peer closed: ', peer.id)
+                peer.mux.destroy() // must be called before piped streams destroyed
                 self.emit('peer:disconnect', peer)
                 delete self.peers[peer.id]
             })
@@ -124,8 +125,10 @@ Room.prototype._trackerInit = function (opts) {
 
             self.peers[peer.id] = peer
 
-            // temporary fix until simple-peer supports multiplexing
+            // temporary fix/hack until simple-peer supports multiplexing
+            // https://github.com/feross/simple-peer/issues/19
             var mux = multiplex()
+            peer.mux = mux
 
             mux.on('error', function (err) {
                 console.log('multiplex error: ', err)
@@ -134,7 +137,7 @@ Room.prototype._trackerInit = function (opts) {
             // TODO: don't emit if peer will be destroyed because it is furthest
             peer.pipe(mux).pipe(peer)
             //console.log('emitting peer:connect')
-            self.emit('peer:connect', peer, mux)
+            self.emit('peer:connect', peer)
             
             if (Object.keys(self.peers).length > self.maxPeers) {
                 self._destroyFurthestPeer()
