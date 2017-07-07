@@ -38,7 +38,7 @@ to free up memory
 
 TODO: convert all times to same timezone
 */
-var JSEncrypt = require('jsencrypt').JSEncrypt
+
 var sodium = require('sodium-universal')
 
 

@@ -10,35 +10,29 @@
   },
   "dependencies": {
     "bittorrent-tracker": "^8.0.11",
-    "browserify": "^13.1.0",
     "crdt": "^3.6.4",
     "drag-drop": "^2.12.1",
-    "dragula": "^3.7.1",
-    "ejs": "^2.4.2",
-    "exorcist": "^0.4.0",
     "express": "^4.13.4",
     "hat": "0.0.3",
     "hypercore": "^6.6.4",
-    "inherits": "^2.0.3",
-    "jsencrypt": "^2.3.1",
     "jsmediatags": "^3.3.0",
     "localforage": "^1.4.2",
-    "minifyify": "^7.3.3",
     "multiplex": "^6.7.0",
     "mustache": "^2.2.1",
-    "ncp": "^2.0.0",
     "pump": "^1.0.2",
     "query-string": "^4.2.3",
     "random-access-memory": "^2.4.0",
     "simple-peer": "^6.0.7",
     "sodium-universal": "^1.4.0",
-    "uglify-js": "^2.7.3",
-    "uglifyify": "^3.0.3",
-    "video.js": "^5.11.6",
-    "videojs-youtube": "^2.1.0",
     "webtorrent": "^0.96.4"
   },
   "devDependencies": {
-    "concurrently": "^3.1.0"
+      "concurrently": "^3.1.0",
+      "browserify": "^13.1.0",
+      "uglify-js": "^2.7.3",
+      "uglifyify": "^3.0.3",
+      "minifyify": "^7.3.3",
+      "exorcist": "^0.4.0",
+       "ejs": "^2.4.2"
   }
 }
