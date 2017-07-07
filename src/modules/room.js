@@ -38,6 +38,8 @@ function Room (opts) {
 
 inherits(Room, EventEmitter)
 
+
+// TODO: fix race conditions?
 Room.prototype.leave = function () {
     var self = this
     console.log('leaving room')
@@ -51,6 +53,7 @@ Room.prototype.leave = function () {
     this.tracker = null
 }
 
+// note: destroying emits peer close event, no need to do it here
 Room.prototype._destroyFurthestPeer = function () {
     var self = this
     var keys = Object.keys(self.peers)
@@ -68,7 +71,7 @@ Room.prototype._destroyFurthestPeer = function () {
             furthestDist = dist
         }
     })
-    // TODO: destory streams first?
+    // TODO: destroy streams first?
     furthestPeer.destroy(function () {
         console.log('destroyed furthest peer', furthestPeer.id)
         delete self.peers[furthestPeer.id]
@@ -109,6 +112,7 @@ Room.prototype._trackerInit = function (opts) {
 
             peer.once('close', function () {
                 console.log('peer closed: ', peer.id)
+                self.emit('peer:disconnect', peer)
                 delete self.peers[peer.id]
             })
 

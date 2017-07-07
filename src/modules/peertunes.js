@@ -134,9 +134,13 @@ function PeerTunes (config) {
     this._songHistoryFeed = null
 
     // streams
-    this.docStream = null
-    this.hyperStream = null
+    //this.docStream = null
+    //this.hyperStream = null
 
+    // map peer ids to crdt streams
+    this.docStreams = {}
+    // map peer ids to hypercore streams
+    this.hyperStreams = {}
 
     // cache jQuery selectors
     this.$moshpit = $(config.selectors.moshpit)
@@ -341,8 +345,17 @@ PeerTunes.prototype._onJoinRoom = function () {
 }
 
 PeerTunes.prototype.closeStreams = function () {
-    if (this.hyperStream) this.hyperStream.destroy()
-    if (this.docStream) this.docStream.destroy()
+    var self = this
+    // closing hypercore replication stream prevents peer timeout error
+    //if (this.hyperStream) this.hyperStream.destroy()
+    //if (this.docStream) this.docStream.destroy()
+    Object.keys(this.hyperStreams).forEach(function (key) {
+        self.hyperStreams[key].destroy()
+    })
+
+     Object.keys(this.docStreams).forEach(function (key) {
+        self.docStreams[key].destroy()
+    })
 }
 
 // joins p2p replicated data structures for room
@@ -354,20 +367,34 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
      // create replication streams
     room.on('peer:connect', function (peer, mux) {
 
-        self.docStream = self._doc.createStream()
+        var docStream = self._doc.createStream()
+        self.docStreams[peer.id] = docStream
         var docSharedStream = mux.createSharedStream('peertunes-doc')
-        docSharedStream.pipe(self._doc.createStream()).pipe(docSharedStream)
+        docSharedStream.pipe(docStream).pipe(docSharedStream)
         docSharedStream.on('end', function () {
             console.log('peertunes-docSharedStream ended')
         })
 
-        self.hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
+        var hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
+        self.hyperStreams[peer.id] = hyperStream
         var hyperSharedStream = mux.createSharedStream('hypercore')
-        hyperSharedStream.pipe(self.hyperStream).pipe(hyperSharedStream)
+        hyperSharedStream.pipe(hyperStream).pipe(hyperSharedStream)
         hyperSharedStream.on('end', function () {
             console.log('peertunes-hypercore stream ended')
         })
         
+    })
+
+    room.on('peer:disconnect', function (peer) {
+        if (self.docStreams[peer.id]) {
+            self.docStreams[peer.id].destroy()
+            delete self.docStreams[peer.id]
+        }
+
+        if (self.hyperStreams[peer.id]) {
+            self.hyperStreams[peer.id].destroy()
+            delete self.hyperStreams[peer.id]
+        }
     })
 
     // chat
@@ -410,10 +437,17 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
 
     this._songHistoryFeed.on('append', function () {
         //console.log('song history append')
+        
         self._songHistoryFeed.get(self._songHistoryFeed.length - 1, function (err, data) {
             console.log('appended block: ', data)
 
             var currentTime = Date.now() - data.startTime
+
+            if (currentTime/1000 >= data.song.duration) {
+                console.log('skipping song that already ended')
+                return
+            }
+            
             self.player.play(data.song, currentTime)
             self.songManager.play(data.song)
 
@@ -468,6 +502,8 @@ PeerTunes.prototype.leaveRoom = function () {
     this._djSeq - null
 
     this.songManager.end()
+
+    this.closeStreams()
 
 
     // resets room elements (chat, moshpit, etc)
