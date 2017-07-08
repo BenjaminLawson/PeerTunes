@@ -11,7 +11,9 @@ var Room = require('./room')
 var crypto = require('crypto-browserify')
 var pump = require('pump')
 
-var HEARTBEAT_INTERVAL = 30000 // 30 seconds
+var HEARTBEAT_INTERVAL = 30000
+var REAPER_INTERVAL = 40000
+var EXPIRATION_TIME =  40000
 
 function HostedRoom (opts) {
     var self = this
@@ -61,11 +63,11 @@ function HostedRoom (opts) {
         pump(crdtStream, self._doc.createStream(), crdtStream, function (err) {
             //console.log('hosted-room crdt pipe closed', err)
         })
-        //crdtStream.pipe(self._doc.createStream()).pipe(crdtStream)
-        crdtStream.on('end', function () {
-            console.log('crdtStream ended')
-        })
     })
+
+    if (this.isHost) {
+        this._initReaper()
+    }
 }
 
 inherits(HostedRoom, Room)
@@ -81,5 +83,28 @@ HostedRoom.prototype.leave = function () {
     
     // remove heartbeat
     clearInterval(this._heartbeatInterval)
-    this._heartbeats.rm(this.id)
+
+    // TODO: not triggering _heartbeats remove?
+    this._doc.rm(this.id)
+
+    if (this._reaperInterval) clearInterval(this._reaperInterval)
+}
+
+// scans heartbeats for expired peers periodically
+HostedRoom.prototype._initReaper = function () {
+    var self = this
+    this._reaperInterval = setInterval(reap, REAPER_INTERVAL)
+
+    function reap () {
+        var expired = []
+        var heartbeats = self._heartbeats.asArray()
+        for (var i = heartbeats.length - 1; i >= 0; i--) {
+            var row = heartbeats[i]
+            var time = row.get('time')
+            if (Date.now() - time > EXPIRATION_TIME) {
+                console.log('reaping: ', row.id)
+                self._doc.rm(row.id)
+            }
+        }
+    }
 }

@@ -1,6 +1,4 @@
-// native
-// var EventEmitter = require('events').EventEmitter
-// var inherits = require('inherits')
+// TODO: refactor host-only code to its own init function
 
 // Globals
 //var $, emojione
@@ -264,9 +262,7 @@ PeerTunes.prototype.initClickHandlers = function () {
         }
         
         // if in dj queue, leave dj queue
-        self._djSeq.rm('dj-'+self.id)
-        console.log('left DJ queue')
-        $(this).removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
+        self.leaveDJQueue()
 
     })
 
@@ -340,8 +336,15 @@ PeerTunes.prototype._onJoinRoom = function () {
     self.addAvatar(this.id, this.username, false)
     
     // create avatars for future users
-    this.room.on('user:join', function (row) {
-        self.addAvatar(row.id, row.nicename, false)
+    this.room.on('user:join', function (user) {
+        self.addAvatar(user.id, user.nicename, false)
+    })
+
+    // remove avatars when users leave
+    this.room.on('user:leave', function (user) {
+        self.removeAvatar(user.id)
+        
+        if (self.room.isHost) self._djSeq.rm('dj-'+self.id)
     })
 }
 
@@ -375,20 +378,12 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
         pump(docSharedStream, docStream, docSharedStream, function (err) {
             //console.log('doc pipe closed ', err)
         })
-        //docSharedStream.pipe(docStream).pipe(docSharedStream)
-        docSharedStream.on('end', function () {
-            console.log('peertunes-docSharedStream ended')
-        })
 
         var hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
         self.hyperStreams[peer.id] = hyperStream
         var hyperSharedStream = mux.createSharedStream('hypercore')
         pump(hyperSharedStream, hyperStream, hyperSharedStream, function (err) {
             //console.log('hyper pipe closed ', err)
-        })
-        //hyperSharedStream.pipe(hyperStream).pipe(hyperSharedStream)
-        hyperSharedStream.on('end', function () {
-            //console.log('peertunes-hypercore stream ended')
         })
         
     })
@@ -490,8 +485,14 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
 
 PeerTunes.prototype.leaveRoom = function () {
     var self = this
+
+    console.log('leaving room')
     
     if (!this.room) return
+
+    if (this.isInDJQueue()) {
+        this.leaveDJQueue()
+    } 
 
 
     // TODO: destroy properly to prevent hyperore-ptotocol Error: remote timed out
@@ -525,9 +526,27 @@ PeerTunes.prototype.resetRoom = function () {
     this.$leaveButton.hide()
 }
 
-PeerTunes.prototype.isInDJQueue = function () {
+PeerTunes.prototype.removeDJFromQueue = function (id) {
+    if (!this._djSeq) {
+        console.log("djSeq doesn't exist, can't remove dj")
+    }
+    
+    this._djSeq.rm('dj-'+id)
+}
+
+PeerTunes.prototype.leaveDJQueue = function () {
+    this.removeDJFromQueue(this.id)
+    console.log('left DJ queue')
+
+    // TODO: fix selector
+    this.$joinQueueButton.removeClass('btn-info').addClass('btn-primary').text('Join DJ Queue')
+}
+
+PeerTunes.prototype.isInDJQueue = function (djId) {
+    if (!djId) djId = this.id
+    
     if (!this._djSeq) return false
-    return this._djSeq.has('dj-'+this.id)
+    return this._djSeq.has('dj-'+djId)
 }
 
 // returns true if successfully joined queue
@@ -548,6 +567,8 @@ PeerTunes.prototype.joinDJQueue = function () {
     return true
 }
 
+
+// HOST function
 PeerTunes.prototype.cycleDJQueue = function () {
     if (!this._djSeq || this._djSeq.length() <= 1) return
 
