@@ -68,8 +68,6 @@ function init () {
     public: public
   }
 
-  console.log(config.keys.private.toString('base64'))
-
   var PT = new PeerTunes(config)
 
   $('#welcome').css('top', '100%') // slide down out of view
