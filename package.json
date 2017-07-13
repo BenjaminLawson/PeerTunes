@@ -21,18 +21,19 @@
     "mustache": "^2.2.1",
     "pump": "^1.0.2",
     "query-string": "^4.2.3",
+    "r-value": "^1.1.5",
     "random-access-memory": "^2.4.0",
     "simple-peer": "^6.0.7",
     "sodium-universal": "^1.4.0",
     "webtorrent": "^0.96.4"
   },
   "devDependencies": {
-      "concurrently": "^3.1.0",
-      "browserify": "^13.1.0",
-      "uglify-js": "^2.7.3",
-      "uglifyify": "^3.0.3",
-      "minifyify": "^7.3.3",
-      "exorcist": "^0.4.0",
-       "ejs": "^2.4.2"
+    "concurrently": "^3.1.0",
+    "browserify": "^13.1.0",
+    "uglify-js": "^2.7.3",
+    "uglifyify": "^3.0.3",
+    "minifyify": "^7.3.3",
+    "exorcist": "^0.4.0",
+    "ejs": "^2.4.2"
   }
 }

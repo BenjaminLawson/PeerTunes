@@ -15,6 +15,7 @@ var crypto = require('crypto-browserify')
 var hypercore = require('hypercore')
 var ram = require('random-access-memory')
 var pump = require('pump')
+var Value = require('r-value')
 
 // modules
 var YT = require('./YT')
@@ -131,6 +132,8 @@ function PeerTunes (config) {
     this._chatSet = null
     this._djSeq = null
     this._songHistoryFeed = null
+
+    this._currentSong = null
 
     // streams
     //this.docStream = null
@@ -368,6 +371,8 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     
     this._doc = new Doc()
 
+    this._currentSong = new Value()
+
      // create replication streams
     room.on('peer:connect', function (peer) {
         var mux = peer.mux
@@ -379,11 +384,20 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
             //console.log('doc pipe closed ', err)
         })
 
+        /*
         var hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
         self.hyperStreams[peer.id] = hyperStream
         var hyperSharedStream = mux.createSharedStream('hypercore')
         pump(hyperSharedStream, hyperStream, hyperSharedStream, function (err) {
             //console.log('hyper pipe closed ', err)
+        })
+*/
+
+        var valueStream = self._currentSong.createStream()
+        var valueSharedStream = mux.createSharedStream('current-song')
+        pump(valueSharedStream, valueStream, valueSharedStream, function (err) {
+            console.log('current song stream closed')
+            
         })
         
     })
@@ -419,9 +433,44 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
 
 
     // TODO: use r-value of crdt seq for currently playing songs / song history?
+
+    this._currentSong.on('update', function (data) {
+        console.log('update current song value: ', data)
+
+        var currentTime = Date.now() - data.startTime
+        console.log('currentTime: ', currentTime)
+
+        if (currentTime/1000 >= data.song.duration) {
+            console.log('skipping song that already ended')
+            return
+        }
+        
+        self.player.play(data.song, currentTime)
+        self.songManager.play(data.song)
+
+        // if this user is the new DJ, cycle song queue
+        console.log('data.userId: ', data.userId, ', self.id: ', self.id)
+        //console.log(data)
+        if (data.userId === self.id) {
+            console.log('user is now DJ, cycling song queue')
+            self.queueModel.cycle()
+        }
+    })
+
+    if (this.room.isHost) {
+        console.log('ISHOST, CHECKING DJ SEQ')
+        self._djSeq.on('add', function (row) {
+            row = row.toJSON()
+            if (self._djSeq.length() === 1) {
+                // queue was empty, this is first dj
+                self.playNextDJSong()
+            }
+        })
+    }
     
     // make hypercore using host's public key for song history
     // TODO: sparse download starting from most recent block
+    /*
     var opts = {
         createIfMissing: false,
         overwrite: true,
@@ -434,6 +483,7 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     //console.log('hypercore opts: ', opts)
 
     //console.log('hostKey: ', this.room.hostKey)
+    
     this._songHistoryFeed = hypercore(ram, this.room.hostKey, opts)
 
     this._songHistoryFeed.on('error', function (err) {
@@ -482,6 +532,7 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
             })
         }
     })
+*/
 
 }
 
@@ -626,6 +677,7 @@ PeerTunes.prototype.onSongEnd = function () {
     }
 }
 
+// only called if host
 PeerTunes.prototype.playNextDJSong = function () {
     var self = this
 
@@ -639,12 +691,21 @@ PeerTunes.prototype.playNextDJSong = function () {
     var row = this._djSeq.first().toJSON()
     var song = row.song
 
+    this._currentSong.set({
+        startTime: Date.now(),
+        song: song,
+        userId: row.userId,
+        username: row.username
+    })
+    
+    /*
     this._songHistoryFeed.append({
         startTime: Date.now(),
         song: song,
         userId: row.userId,
         username: row.username
     })
+*/
 }
 
 //callback when seeding finished setting up
