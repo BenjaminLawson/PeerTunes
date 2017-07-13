@@ -8,7 +8,6 @@ mp3 MediaSource only works in Chrome, not firefox
 
 Future features:
 -seed & play mp3 file (not permanent in queue?)
--drawing (maybe dj whiteboard, or draw and then drawing appears above head)
 -let user pause, but keep timer so on play it jumps to current time
 
 TODO: use RSA keys to prove identities & make friend feature
@@ -17,7 +16,6 @@ TODO: use RSA keys to prove identities & make friend feature
 -next time peer with id appears, ask them to authenticate by decrypting string encrypted with their public key
 -reciprocate (friendships must be two-way)
 
-TODO: host sends start time, instad of time since start, for more accurate guest time calculation
 TODO: fix bug if you try to join your own room
 
 

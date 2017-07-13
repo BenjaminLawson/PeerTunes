@@ -417,6 +417,8 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     // {id, username, song}
     this._djSeq = this._doc.createSeq('type', 'djQueue')
 
+
+    // TODO: use r-value of crdt seq for currently playing songs / song history?
     
     // make hypercore using host's public key for song history
     // TODO: sparse download starting from most recent block
