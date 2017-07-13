@@ -127,6 +127,7 @@ function PeerTunes (config) {
     this._doc = null
     this._chatSet = null
     this._djSeq = null
+    this._moodSet = null
     this._currentSong = null
 
     // map peer ids to crdt streams
@@ -262,10 +263,17 @@ PeerTunes.prototype.initClickHandlers = function () {
 
     this.$likeButton.click(function (e) {
         console.log('Rate +1')
+        if (self._moodSet) {
+            console.log('moodset+1')
+            self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: true})
+        }
     })
 
     this.$dislikeButton.click(function (e) {
         console.log('Rate -1')
+        if (self._moodSet) {
+            self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: false})
+        }
     })
     // room modal
     $('button[data-target="#roomModal"]').click(function (event) {
@@ -335,11 +343,14 @@ PeerTunes.prototype._onJoinRoom = function () {
     this.room.on('user:leave', function (user) {
         self.removeAvatar(user.id)
         
-        if (self.room.isHost) self._djSeq.rm('dj-'+self.id)
+        if (self.room.isHost)  {
+            self._doc.rm('dj-'+user.id)
+            self._doc.rm('mood-'+user.id)
+        }
     })
 }
 
-// TODO: destroy multiplex for peer
+// TODO: destroy multiplex for peer?
 PeerTunes.prototype.closeStreams = function () {
     var self = this
 
@@ -348,48 +359,13 @@ PeerTunes.prototype.closeStreams = function () {
     })
 }
 
-// joins p2p replicated data structures for room
-PeerTunes.prototype.joinDocForRoom = function (room) {
+PeerTunes.prototype.initReplicationModels = function () {
     var self = this
     
     this._doc = new Doc()
-
     this._currentSong = new Value()
-
-     // create replication streams
-    room.on('peer:connect', function (peer) {
-        var mux = peer.mux
-
-        var docStream = self._doc.createStream()
-        self.docStreams[peer.id] = docStream
-        var docSharedStream = mux.createSharedStream('peertunes-doc')
-        pump(docSharedStream, docStream, docSharedStream, function (err) {
-            //console.log('doc pipe closed ', err)
-        })
-
-        var valueStream = self._currentSong.createStream()
-        var valueSharedStream = mux.createSharedStream('current-song')
-        pump(valueSharedStream, valueStream, valueSharedStream, function (err) {
-            console.log('current song stream closed')
-            
-        })
-        
-    })
-
-    room.on('peer:disconnect', function (peer) {
-        if (self.docStreams[peer.id]) {
-            self.docStreams[peer.id].destroy()
-            delete self.docStreams[peer.id]
-        }
-
-        if (self.hyperStreams[peer.id]) {
-            self.hyperStreams[peer.id].destroy()
-            delete self.hyperStreams[peer.id]
-        }
-    })
-
-    // chat
     this._chatSeq = this._doc.createSeq('type', 'chat')
+    this._moodSet = this._doc.createSet('type', 'mood')
 
     this._chatSeq.on('add', function (row) {
         row = row.toJSON()
@@ -424,7 +400,6 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     })
 
     if (this.room.isHost) {
-        console.log('ISHOST, CHECKING DJ SEQ')
         self._djSeq.on('add', function (row) {
             row = row.toJSON()
             if (self._djSeq.length() === 1) {
@@ -433,6 +408,47 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
             }
         })
     }
+
+    this._moodSet.on('add', function (row) {
+        row = row.toJSON()
+        self.setHeadBobbingForUser(row.userId, row.like)
+    })
+    this._moodSet.on('changes', function (row, changed) {
+        row = row.toJSON()
+        self.setHeadBobbingForUser(row.userId, row.like)
+    })
+}
+
+// joins p2p replicated data structures for room
+PeerTunes.prototype.joinDocForRoom = function (room) {
+    var self = this
+
+    this.initReplicationModels()
+
+    // create replication streams
+    room.on('peer:connect', function (peer) {
+        var mux = peer.mux
+
+        var docStream = self._doc.createStream()
+        self.docStreams[peer.id] = docStream
+        var docSharedStream = mux.createSharedStream('peertunes-doc')
+        pump(docSharedStream, docStream, docSharedStream, function (err) {
+            //console.log('doc pipe closed ', err)
+        })
+
+        var valueStream = self._currentSong.createStream()
+        var valueSharedStream = mux.createSharedStream('current-song')
+        pump(valueSharedStream, valueStream, valueSharedStream, function (err) {
+            //console.log('current song stream closed')
+        })
+    })
+
+    room.on('peer:disconnect', function (peer) {
+        if (self.docStreams[peer.id]) {
+            self.docStreams[peer.id].destroy()
+            delete self.docStreams[peer.id]
+        }
+    })
 }
 
 PeerTunes.prototype.leaveRoom = function () {
@@ -673,6 +689,11 @@ PeerTunes.prototype.removeAvatar = function (id) {
     var $avatar = $('#user-' + id)
     $avatar.remove()
     $avatar.webuiPopover('destroy')
+}
+
+PeerTunes.prototype.setHeadBobbingForUser = function (userId, bobbing) {
+    var $avatarHead = $('#user-' + userId + ' .audience-head')
+    $avatarHead.toggleClass('headbob-animation', bobbing)
 }
 
 PeerTunes.prototype.stopAllHeadBobbing = function () {
