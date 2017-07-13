@@ -12,8 +12,6 @@ var WebTorrent = require('webtorrent')
 var localforage = require('localforage')
 var Doc = require('crdt').Doc
 var crypto = require('crypto-browserify')
-var hypercore = require('hypercore')
-var ram = require('random-access-memory')
 var pump = require('pump')
 var Value = require('r-value')
 
@@ -108,8 +106,6 @@ function PeerTunes (config) {
         console.log('[Torrent client] error: ', err)
     })
 
-    //this.isHost = false  // this peer is hosting a room
-
     this.username = config.username
     this.id = crypto.createHash('sha1').update(config.keys.public).digest('hex')
 
@@ -131,18 +127,10 @@ function PeerTunes (config) {
     this._doc = null
     this._chatSet = null
     this._djSeq = null
-    this._songHistoryFeed = null
-
     this._currentSong = null
-
-    // streams
-    //this.docStream = null
-    //this.hyperStream = null
 
     // map peer ids to crdt streams
     this.docStreams = {}
-    // map peer ids to hypercore streams
-    this.hyperStreams = {}
 
     // cache jQuery selectors
     this.$moshpit = $(config.selectors.moshpit)
@@ -354,11 +342,6 @@ PeerTunes.prototype._onJoinRoom = function () {
 // TODO: destroy multiplex for peer
 PeerTunes.prototype.closeStreams = function () {
     var self = this
-    
-    // closing hypercore replication stream prevents peer timeout error
-    Object.keys(this.hyperStreams).forEach(function (key) {
-        self.hyperStreams[key].destroy()
-    })
 
      Object.keys(this.docStreams).forEach(function (key) {
         self.docStreams[key].destroy()
@@ -383,15 +366,6 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
         pump(docSharedStream, docStream, docSharedStream, function (err) {
             //console.log('doc pipe closed ', err)
         })
-
-        /*
-        var hyperStream = self._songHistoryFeed.replicate({live: true, encrypt: false})
-        self.hyperStreams[peer.id] = hyperStream
-        var hyperSharedStream = mux.createSharedStream('hypercore')
-        pump(hyperSharedStream, hyperStream, hyperSharedStream, function (err) {
-            //console.log('hyper pipe closed ', err)
-        })
-*/
 
         var valueStream = self._currentSong.createStream()
         var valueSharedStream = mux.createSharedStream('current-song')
@@ -431,14 +405,8 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
     // {id, username, song}
     this._djSeq = this._doc.createSeq('type', 'djQueue')
 
-
-    // TODO: use r-value of crdt seq for currently playing songs / song history?
-
     this._currentSong.on('update', function (data) {
-        console.log('update current song value: ', data)
-
         var currentTime = Date.now() - data.startTime
-        console.log('currentTime: ', currentTime)
 
         if (currentTime/1000 >= data.song.duration) {
             console.log('skipping song that already ended')
@@ -449,8 +417,6 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
         self.songManager.play(data.song)
 
         // if this user is the new DJ, cycle song queue
-        console.log('data.userId: ', data.userId, ', self.id: ', self.id)
-        //console.log(data)
         if (data.userId === self.id) {
             console.log('user is now DJ, cycling song queue')
             self.queueModel.cycle()
@@ -467,73 +433,6 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
             }
         })
     }
-    
-    // make hypercore using host's public key for song history
-    // TODO: sparse download starting from most recent block
-    /*
-    var opts = {
-        createIfMissing: false,
-        overwrite: true,
-        valueEncoding: 'json',
-        sparse: false // TODO: true
-    }
-
-    if (this.room.isHost) opts.secretKey = this.keys.private
-
-    //console.log('hypercore opts: ', opts)
-
-    //console.log('hostKey: ', this.room.hostKey)
-    
-    this._songHistoryFeed = hypercore(ram, this.room.hostKey, opts)
-
-    this._songHistoryFeed.on('error', function (err) {
-        console.log('hypercore error: ', err)
-    })
-
-    this._songHistoryFeed.on('append', function () {
-        //console.log('song history append')
-        
-        self._songHistoryFeed.get(self._songHistoryFeed.length - 1, function (err, data) {
-            console.log('appended block: ', data)
-
-            var currentTime = Date.now() - data.startTime
-
-            if (currentTime/1000 >= data.song.duration) {
-                console.log('skipping song that already ended')
-                return
-            }
-            
-            self.player.play(data.song, currentTime)
-            self.songManager.play(data.song)
-
-            // if this user is the new DJ, cycle song queue
-            console.log('data.userId: ', data.userId, ', self.id: ', self.id)
-            console.log(data)
-            if (data.userId === self.id) {
-                console.log('user became DJ, cycling song queue')
-                self.queueModel.cycle()
-            }
-        })
-    })
-
-    this._songHistoryFeed.on('ready', function () {
-        if (self.room.isHost) {
-            if (!self._songHistoryFeed.writable) {
-                console.log('Error: song history feed not writable even though peer is host')
-                return
-            }
-
-            self._djSeq.on('add', function (row) {
-                row = row.toJSON()
-                if (self._djSeq.length() === 1) {
-                    // queue was empty, this is first dj
-                    self.playNextDJSong()
-                }
-            })
-        }
-    })
-*/
-
 }
 
 PeerTunes.prototype.leaveRoom = function () {
@@ -548,16 +447,9 @@ PeerTunes.prototype.leaveRoom = function () {
     } 
 
 
-    // TODO: destroy properly to prevent hyperore-ptotocol Error: remote timed out
-    this._songHistoryFeed.close(function (err) {
-        if (err) console.log('Error closing song history feed: ', err)
-
-        self._songHistoryFeed = null
-        
-        // cleans up peers and trackers
-        self.room.leave()
-        self.room = null
-    })
+    // cleans up peers and trackers
+    self.room.leave()
+    self.room = null
 
     this._doc = null
     this._chatSet = null
