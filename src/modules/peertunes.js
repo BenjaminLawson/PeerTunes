@@ -384,7 +384,6 @@ PeerTunes.prototype.initReplicationModels = function () {
 
   this.chatController.on('chat:submit', function (msg) {
     self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
-    console.log(self._doc.toJSON())
   })
 
   // DJ queue sequence
@@ -638,6 +637,21 @@ PeerTunes.prototype.playNextDJSong = function () {
 //callback when seeding finished setting up
 PeerTunes.prototype.seedFileWithKey = function (key, callback) {
   var self = this
+
+  // check if torrent already seeding
+  for(var i = 0; i < this.activeTorrents.length; i++) {
+    if (this.activeTorrents[i].key === key) {
+      callback(this.activeTorrents[i])
+      return
+    }
+  }
+
+  // limit number of active torrents by removing oldest
+  if (this.activeTorrents.length > 2) {
+    console.log('too many active torrents, removing oldest')
+    var oldest = this.activeTorrents.shift()
+    this.torrentClient.remove(oldest.infoHash)
+  }
   
   console.log('Seeding file with key ', key)
   localforage.getItem(key).then(function (value) {

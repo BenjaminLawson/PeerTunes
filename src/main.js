@@ -67,6 +67,7 @@ function init () {
   }
 
   var PT = new PeerTunes(config)
+  window.PT = PT
 
   $('#welcome').css('top', '100%') // slide down out of view
 }
