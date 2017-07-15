@@ -87,7 +87,7 @@ function PeerTunes (config) {
     })
 
     this.tracker = null
-    this.currentTorrentID = null
+    this.currentTorrentInfoHash = null
 
 
     // set up webtorrent
@@ -360,63 +360,69 @@ PeerTunes.prototype.closeStreams = function () {
 }
 
 PeerTunes.prototype.initReplicationModels = function () {
-    var self = this
-    
-    this._doc = new Doc()
-    this._currentSong = new Value()
-    this._chatSeq = this._doc.createSeq('type', 'chat')
-    this._moodSet = this._doc.createSet('type', 'mood')
+  var self = this
+  
+  this._doc = new Doc()
+  this._currentSong = new Value()
+  this._chatSeq = this._doc.createSeq('type', 'chat')
+  this._moodSet = this._doc.createSet('type', 'mood')
 
-    this._chatSeq.on('add', function (row) {
-        row = row.toJSON()
-        self.chatModel.addMessage({userId: row.userId, username: row.username, message: row.message})
-    })
+  this._chatSeq.on('add', function (row) {
+    row = row.toJSON()
+    self.chatModel.addMessage({userId: row.userId, username: row.username, message: row.message})
+  })
 
-    this.chatController.on('chat:submit', function (msg) {
-        self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
-        console.log(self._doc.toJSON())
-    })
+  this.chatController.on('chat:submit', function (msg) {
+    self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
+    console.log(self._doc.toJSON())
+  })
 
-    // DJ queue sequence
-    // {id, username, song}
-    this._djSeq = this._doc.createSeq('type', 'djQueue')
+  // DJ queue sequence
+  // {id, username, song}
+  this._djSeq = this._doc.createSeq('type', 'djQueue')
 
-    this._currentSong.on('update', function (data) {
-        var currentTime = Date.now() - data.startTime
+  this._currentSong.on('update', function (data) {
+    var currentTime = Date.now() - data.startTime
 
-        if (currentTime/1000 >= data.song.duration) {
-            console.log('skipping song that already ended')
-            return
-        }
-        
-        self.player.play(data.song, currentTime)
-        self.songManager.play(data.song)
-
-        // if this user is the new DJ, cycle song queue
-        if (data.userId === self.id) {
-            console.log('user is now DJ, cycling song queue')
-            self.queueModel.cycle()
-        }
-    })
-
-    if (this.room.isHost) {
-        self._djSeq.on('add', function (row) {
-            row = row.toJSON()
-            if (self._djSeq.length() === 1) {
-                // queue was empty, this is first dj
-                self.playNextDJSong()
-            }
-        })
+    if (currentTime/1000 >= data.song.duration) {
+      console.log('skipping song that already ended')
+      return
     }
 
-    this._moodSet.on('add', function (row) {
-        row = row.toJSON()
-        self.setHeadBobbingForUser(row.userId, row.like)
+    var isDJ = data.userId === self.id
+    
+    self.player.play(data.song, currentTime, isDJ)
+    self.songManager.play(data.song)
+
+    // if this user is the new DJ, cycle song queue
+    if (isDJ) {
+      console.log('user is now DJ, cycling song queue')
+      self.queueModel.cycle()
+      if (data.song.source === 'MP3') {
+        // dj must seed their song
+        self.seedFileWithKey(data.song.id, function (torrent) {})
+      }
+    }
+  })
+
+  if (this.room.isHost) {
+    self._djSeq.on('add', function (row) {
+      row = row.toJSON()
+      if (self._djSeq.length() === 1) {
+        // queue was empty, this is first dj
+        self.playNextDJSong()
+      }
     })
-    this._moodSet.on('changes', function (row, changed) {
-        row = row.toJSON()
-        self.setHeadBobbingForUser(row.userId, row.like)
-    })
+  }
+
+  this._moodSet.on('add', function (row) {
+    row = row.toJSON()
+    self.setHeadBobbingForUser(row.userId, row.like)
+  })
+  this._moodSet.on('changes', function (row, changed) {
+    row = row.toJSON()
+    self.setHeadBobbingForUser(row.userId, row.like)
+  })
 }
 
 // joins p2p replicated data structures for room
@@ -605,21 +611,12 @@ PeerTunes.prototype.playNextDJSong = function () {
         userId: row.userId,
         username: row.username
     })
-    
-    /*
-    this._songHistoryFeed.append({
-        startTime: Date.now(),
-        song: song,
-        userId: row.userId,
-        username: row.username
-    })
-*/
 }
 
 //callback when seeding finished setting up
 PeerTunes.prototype.seedFileWithKey = function (key, callback) {
     var self = this
-    //console.log('Seeding file with key ', key)
+    console.log('Seeding file with key ', key)
     localforage.getItem(key).then(function (value) {
         // This code runs once the value has been loaded
         // from the offline store.
@@ -628,8 +625,8 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
 
         self.removeLastTorrent()
         self.torrentClient.seed(file, function (torrent) {
-            console.log('Client is seeding ' + key)
-            self.currentTorrentID = torrent.infoHash
+          console.log('Client is seeding file ' + key, ', infoHash: ', torrent.infoHash)
+            self.currentTorrentInfoHash = torrent.infoHash
 
             torrent.on('wire', function (wire) {
                 console.log('torrent: connected to new peer')
@@ -652,10 +649,10 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
 }
 
 PeerTunes.prototype.removeLastTorrent = function () {
-    if (this.currentTorrentID != null) {
-        console.log('Removing torrent: ', this.currentTorrentID)
-        this.torrentClient.remove(this.currentTorrentID)
-        this.currentTorrentID = null
+    if (this.currentTorrentInfoHash != null) {
+        console.log('Removing torrent: ', this.currentTorrentInfoHash)
+        this.torrentClient.remove(this.currentTorrentInfoHash)
+        this.currentTorrentInfoHash = null
     }
 }
 

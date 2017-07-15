@@ -1,5 +1,7 @@
 var dragDrop = require('drag-drop')
 var localforage = require('localforage')
+var createTorrent = require('create-torrent')
+var parseTorrent = require('parse-torrent')
 
 //modules
 var TagReader = require('../modules/tag-reader')
@@ -42,15 +44,27 @@ function QueueController (view, model, config) {
   })
 
   dragDrop(DOM.songQueue, function (files) {
-    // console.log('Here are the dropped files', files)
+    // TODO: accept multiple files
     var file = files[0]
     var key = file.name
 
     console.log('Reading tags')
 
+    // TODO: use create-torrent and parse-torrent to get infohash & save
+    // when user's turn to dj, seed file, infohash should be the same
+    
+    // TODO: clean up callbacks
     self.tagReader.tagsFromFile(file, function (tags) {
       SongDuration.get(file, function (duration) {
-        self.model.addSong({title: tags.combinedTitle, source: 'MP3', id: key, duration: duration})
+        self._calculateInfoHash(file, function (infoHash, err) {
+          if (err) {
+            console.log('Error calculating infoHash: ', err)
+            return
+          }
+          var song = {title: tags.combinedTitle, source: 'MP3', id: key, infoHash: infoHash, duration: duration}
+          self.model.addSong(song)
+          console.log('Added song to queue model: ', song)
+        })
       })
     })
 
@@ -70,6 +84,14 @@ function QueueController (view, model, config) {
       $(this).removeData('original-index')
       self.model.move(oldIndex, newIndex)
     }
+  })
+}
+
+QueueController.prototype._calculateInfoHash = function (file, cb) {
+  console.log('calc infiHash of file ', file)
+  createTorrent(file, function (err, torrent) {
+    var parsed = parseTorrent(torrent)
+    cb(parsed.infoHash, err)
   })
 }
 

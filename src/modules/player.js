@@ -6,6 +6,7 @@
 
 // modules
 var TagReader = require('./tag-reader')
+var localforage = require('localforage')
 
 module.exports = Player
 
@@ -68,35 +69,24 @@ function Player (config) {
 
 
 // time in milliseconds
-Player.prototype.play = function (data, time) {
+Player.prototype.play = function (data, time, isDJ) {
 
     this.currentlyPlaying = data
-    var id = data.id
-    var source = data.source
-    var duration = data.duration
-    //console.log('play id: ' + id + ' time: ' + time + ' from source: ' + source)
+
     console.log('play data: ', data)
 
+    this.setTitle(data.title)
 
-    //TODO: make sure all play calls have title, then remove this test
-    if (data.title) {
-        this.setTitle(data.title)
-    }
-
-    switch (source) {
+    switch (data.source) {
     case 'YOUTUBE':
         this.playYouTube(data, time)
         break
     case 'MP3':
-        this.playMp3(data, time)
+      this.playMp3(data, time, isDJ)
         break
     default:
         console.log("Can't play unknown media type ", source)
     }
-
-    //TODO: move this to peertunes
-    //self.rating = 0
-    //self.vote = 0
 }
 
 Player.prototype.end = function () {
@@ -113,20 +103,21 @@ Player.prototype.end = function () {
  * play an mp3 file
  * @param {bool} local - if the mp3 is in localstorage
  */
-Player.prototype.playMp3 = function (meta, local) {
+Player.prototype.playMp3 = function (meta, time, isDJ) {
     var self = this
 
-    this.player = self.player.audio
+    this.player = self.audioPlayer
 
     //prevents last cover from showing while new cover loads
     self.setCover(null)
 
     this.setVisiblePlayer('audio')
 
-    if (!local) { // is not this user's mp3 => download from peers
-        console.log('Song has infoHash, leeching')
-        self.removeLastTorrent()
-        self.currentTorrentID = data.infoHash
+    if (!isDJ) { // is not this user's mp3 => download from peers
+      console.log('Song has infoHash, leeching')
+      // TODO: emit event to let peertunes module know and do this
+        //self.removeLastTorrent()
+        //self.currentTorrentID = data.infoHash
 
         //TODO: use PeerTunes torrent client
         var tr = self.torrentClient.add(meta.infoHash, function (torrent) {
@@ -148,7 +139,7 @@ Player.prototype.playMp3 = function (meta, local) {
             //TODO: fix this hack
             //TODO: this hack doesn't work properly
             var hackDelay = 120
-            setTimeout(function () { self.song.player.currentTime((time + hackDelay) / 1000)}, hackDelay)
+            setTimeout(function () { self.player.currentTime((time + hackDelay) / 1000)}, hackDelay)
         })
         /*
           tr.on('download', function (bytes) {
@@ -185,11 +176,11 @@ Player.prototype.playMp3 = function (meta, local) {
             })
         })
     } else { // mp3 should be in localStorage
-        console.log('Song does not have infoHash, getting from localstorage')
-        localforage.getItem(id).then(function (value) {
+        console.log('Host is DJ, retrieving MP3 from localstorage')
+        localforage.getItem(meta.id).then(function (value) {
             // This code runs once the value has been loaded
             // from the offline store.
-            var file = new File([value], id, {type: 'audio/mp3', lastModified: Date.now()})
+            var file = new File([value], meta.id, {type: 'audio/mp3', lastModified: Date.now()})
 
             //TODO: revoke object url
             var url = window.URL.createObjectURL(file)
@@ -208,15 +199,6 @@ Player.prototype.playMp3 = function (meta, local) {
                 self.setCover(tags.cover)
             })
 
-
-            //TODO: get duration from queue-item instead
-            self.song.player.one('loadedmetadata', function () {
-                console.log('player mp3 metadata loaded')
-                self.song.meta = {
-                    duration: self.song.player.duration()
-                }
-                if (callback) callback()
-            })
         }).catch(function (err) {
             console.log('Error retrieving mp3: ', err)
         })
@@ -289,15 +271,17 @@ Player.prototype.setTitle = function (title) {
 
 // cover must be URL, can be blob url
 // used for audio player only
+// TODO: set bottom bar cover too
 Player.prototype.setCover = function (cover) {
     /*
       if (this.player == null) {
       this.player.posterImage.hide()
       return
       }
-    */
-    //this.$audio.find('.vjs-poster').css('background-image', 'url(' + cover + ')')
-    //this.player.posterImage.show()
+    
+    this.$audio.find('.vjs-poster').css('background-image', 'url(' + cover + ')')
+    this.player.posterImage.show()
+*/
 }
 
 //decimal 0-1 because that's what videojs uses
