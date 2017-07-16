@@ -638,19 +638,37 @@ PeerTunes.prototype.playNextDJSong = function () {
 PeerTunes.prototype.seedFileWithKey = function (key, callback) {
   var self = this
 
+  console.log('current active torrents: ', this.activeTorrents, ', length: ', this.activeTorrents.length)
+
   // check if torrent already seeding
+  //console.log('comparing with active torrents:')
   for(var i = 0; i < this.activeTorrents.length; i++) {
+    //console.log('=> comparing key ', key, ' to torrent ', this.activeTorrents[i])
     if (this.activeTorrents[i].key === key) {
+      console.log('torrent already exists, skipping')
       callback(this.activeTorrents[i])
       return
     }
   }
+  //console.log('torrent is not in active torrents, proceeding with seeding')
 
   // limit number of active torrents by removing oldest
+  // TODO: prevent currently playing song torrent from being removed (e.g. if top changes multiple times while playing)
   if (this.activeTorrents.length > 2) {
     console.log('too many active torrents, removing oldest')
-    var oldest = this.activeTorrents.shift()
-    this.torrentClient.remove(oldest.infoHash)
+    console.log(this.activeTorrents)
+    var currentSong = this._currentSong.get()
+    if (currentSong.song && currentSong.song.source === 'MP3') {
+      for (var i = 0; i < this.activeTorrents.length; i++) {
+        //iterate until torrent that is not currently playing is found
+        if (this.activeTorrents[i].key !== currentSong.song.id) {
+          var oldest = this.activeTorrents[i]
+          console.log('removing oldest: ', oldest, ' current: ', currentSong)
+          this.torrentClient.remove(oldest.torrent.infoHash)
+          break
+        }
+      }
+    }
   }
   
   console.log('Seeding file with key ', key)
@@ -661,7 +679,7 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
     self.torrentClient.seed(file, function (torrent) {
       console.log('Client is seeding file ' + key, ', infoHash: ', torrent.infoHash)
       //self.currentTorrentInfoHash = torrent.infoHash
-      self.activeTorrents.push(torrent)
+      self.activeTorrents.push({key: key, torrent: torrent})
 
       torrent.on('wire', function (wire) {
         console.log('torrent: connected to new peer')

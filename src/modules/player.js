@@ -100,7 +100,6 @@ Player.prototype.play = function (data, time, isDJ) {
 Player.prototype.end = function () {
   console.log('player song end')
   if (this.player != null) {
-    document.getElementById('vid2_html5_api').pause()
     this.player.trigger('ended')
     this.player.pause()
   }
@@ -258,13 +257,7 @@ Player.prototype.getVolume = function () {
   return this.volume
 }
 
-// TODO: max length in CSS?
-// https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
 Player.prototype.setTitle = function (title) {
-  var maxLength = 65
-  if (title.length > maxLength) {
-    title = title.substring(0, maxLength) + '...'
-  }
   $('#song-title').text(title)
 }
 
@@ -272,7 +265,7 @@ Player.prototype.setTitle = function (title) {
 // used for audio player only
 // TODO: set bottom bar cover too
 Player.prototype.setCover = function (cover) {
-  /*
+  
     if (this.player == null) {
     this.player.posterImage.hide()
     return
@@ -280,7 +273,7 @@ Player.prototype.setCover = function (cover) {
     
     this.$audio.find('.vjs-poster').css('background-image', 'url(' + cover + ')')
     this.player.posterImage.show()
-  */
+  
 }
 
 //decimal 0-1 because that's what videojs uses
