@@ -4,7 +4,6 @@
 //var $, emojione
 
 // 3rd party libraries
-var hat = require('hat')
 var Peer = require('simple-peer')
 var Tracker = require('bittorrent-tracker/client')
 var Mustache = require('mustache')

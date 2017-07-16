@@ -1,5 +1,4 @@
 var Tracker = require('bittorrent-tracker')
-var hat = require('hat')
 var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var crypto = require('crypto-browserify')

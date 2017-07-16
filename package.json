@@ -14,8 +14,6 @@
     "create-torrent": "^3.29.2",
     "drag-drop": "^2.12.1",
     "express": "^4.13.4",
-    "hat": "0.0.3",
-    "hypercore": "^6.6.4",
     "jsmediatags": "^3.3.0",
     "localforage": "^1.4.2",
     "multiplex": "^6.7.0",
