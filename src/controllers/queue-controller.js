@@ -44,14 +44,13 @@ function QueueController (view, model, config) {
   })
 
   dragDrop('#my-queue', function (files) {
-    // TODO: accept multiple files
-    var file = files[0]
+    files.forEach(processFile)  
+  })
+
+  function processFile (file) {
     var key = file.name
 
     console.log('Reading tags')
-
-    // TODO: use create-torrent and parse-torrent to get infohash & save
-    // when user's turn to dj, seed file, infohash should be the same
     
     // TODO: clean up callbacks
     self.tagReader.tagsFromFile(file, function (tags) {
@@ -71,7 +70,7 @@ function QueueController (view, model, config) {
     // store files in localstorage so they can be seeded in future
     // TODO: add loading indicator while song saved to localstorage
     self._saveFileWithKey(file, key)
-  })
+  }
 
   DOM.$songQueue.sortable({
     scrollSpeed: 14,
