@@ -792,7 +792,9 @@ PeerTunes.prototype.doSongSearch = function () {
     $('#song-search-results').html('')
     var resultsHTML = ''
     results.forEach(function (item) {
-      var params = {title: item.title, id: item.id, duration: item.duration}
+      var formatString = (item.duration >= 3600) ? 'HH:mm:ss' : 'mm:ss'
+      var formattedDuration = moment.utc(item.duration * 1000).format(formatString)
+      var params = {title: item.title, id: item.id, duration: item.duration, formattedDuration: formattedDuration, thumbnail: item.thumbnail}
       var rendered = Mustache.render(template, params)
       resultsHTML += rendered
     })

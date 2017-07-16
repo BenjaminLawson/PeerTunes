@@ -54,8 +54,12 @@
 </script>
 
 <script id="songSearchResultTmpl" type="x-tmpl-mustache">
-  <a href="#" class="list-group-item song-search-result" data-id="{{ id }}" data-title="{{ title }}" data-duration="{{ duration }}">
-    <h5 class="list-group-item-heading">{{ title }}</h5>
-    <div id="song-search-result-right"><span class="glyphicon glyphicon-plus"></span></div>
-  </a>
+ <a href="#" class="list-group-item song-search-result" data-id="{{ id }}" data-title="{{ title }}" data-duration="{{ duration }}">
+ <div class="song-result-thumbnail">
+   <span class="label label-primary">{{ formattedDuration }}</span>
+   <img src="{{ thumbnail }}">
+ </div>
+ <h5 class="list-group-item-heading">{{ title }}</h5>
+ <div id="song-search-result-right"><span class="glyphicon glyphicon-plus"></span></div>
+ </a>
 </script>

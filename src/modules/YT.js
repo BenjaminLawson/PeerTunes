@@ -7,7 +7,7 @@ module.exports = (function () {
   
   var config = {
     apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY', // YouTube data api key
-    maxResults: 30
+    maxResults: 35
   }
 
   var baseURL = 'https://www.googleapis.com/youtube/v3/'
@@ -25,12 +25,13 @@ module.exports = (function () {
     }
     var apiQuery = baseURL + 'videos?' + queryString.stringify(query)
     $.getJSON(apiQuery, function (result) {
-      //console.log('Batch video meta result: ', result)
+      console.log('Batch video meta result: ', result)
       var videos = result.items.map(function (item) {
         return {
           title: item.snippet.title,
           id: item.id,
-          duration: secondsFromISODuration(item.contentDetails.duration)
+          duration: secondsFromISODuration(item.contentDetails.duration),
+          thumbnail: item.snippet.thumbnails.medium.url
         }
       })
       

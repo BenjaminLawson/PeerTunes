@@ -197,6 +197,14 @@ body {
 
 
 /* Song Search */
+.song-search-result {
+  height: 84px;
+}
+
+.song-search-result .list-group-item-heading {
+  padding: 0px 0px 0px 106px;
+}
+
 #song-search-result-right {
   position: absolute;
   top: 16px;
@@ -207,6 +215,24 @@ body {
   max-height: 400px;
   overflow-y: scroll;
   overflow-x: hidden;
+}
+
+.song-result-thumbnail {
+  width: 100px;
+  height: 61px;
+  display: block;
+  position: absolute;
+}
+
+.song-result-thumbnail img {
+  width: 100%;
+  height: 100%;
+}
+
+.song-result-thumbnail .label {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
 }
 
 /* Headbob CSS3 animation */
