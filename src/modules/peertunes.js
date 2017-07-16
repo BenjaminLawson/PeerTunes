@@ -70,9 +70,7 @@ function PeerTunes (config) {
   })
 
   this.queueModel.on('queue:change', function (q) {
-    console.log('peertunes queue:change')
     if (!self.isInDJQueue()) {
-      console.log('user not in dj queue, skipping song update')
       return
     }
     var row = self._djSeq.get('dj-'+self.id).toJSON()
@@ -81,10 +79,8 @@ function PeerTunes (config) {
     // only set new value if top song actually changed
     var front = q[0]
     if (front && (front.id !== row.song.id || front.source !== row.song.source)) {
-      console.log('top changed, syncing dj queue')
       if (front.source === 'MP3') {
         self.seedFileWithKey(front.id, function (torrent) {
-          console.log('setting new song')
           self._djSeq.get('dj-'+self.id).set('song', front)
         })
       }
@@ -199,14 +195,12 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   // create room
   $('#btn-create-room').click(function (e) {
-    console.log('create/destroy room clicked')
-
     if (self.room) {
       self.resetRoom()
     }
 
-    if (self.isHost) { // button = Destroy Room
-      self.songManager.end()
+    if (self.room && self.room.isHost) { // button = Destroy Room
+      self.leaveRoom()
       self.lobby.closeRoom()
 
       $(this).text('Create Room')
@@ -603,13 +597,10 @@ PeerTunes.prototype.refreshRoomListing = function () {
 PeerTunes.prototype.onSongEnd = function () {
   var self = this
 
-  console.log('onSongEnd')
-
-  //this.stopAllHeadBobbing()
   this.player.end()
   this.player.setTitle('')
 
-  if (this.room.isHost) {
+  if (this.room && this.room.isHost) {
     if (this._djSeq.length() > 1) {
       // move front dj to back of queue
       console.log('cycling DJs')
@@ -623,6 +614,8 @@ PeerTunes.prototype.onSongEnd = function () {
 // only called if host
 PeerTunes.prototype.playNextDJSong = function () {
   var self = this
+
+  if (!this.room || !this.room.isHost) return
 
   if (this._djSeq.length() === 0) {
     console.log('no DJs in queue, nothing to play')

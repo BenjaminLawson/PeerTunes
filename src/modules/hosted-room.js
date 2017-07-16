@@ -87,7 +87,10 @@ HostedRoom.prototype.leave = function () {
     // TODO: not triggering _heartbeats remove?
     this._doc.rm(this.id)
 
-    if (this._reaperInterval) clearInterval(this._reaperInterval)
+  if (this._reaperInterval) clearInterval(this._reaperInterval)
+
+  this.isHost = false
+  
 }
 
 // scans heartbeats for expired peers periodically
