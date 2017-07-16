@@ -43,7 +43,7 @@ function QueueController (view, model, config) {
     self.model.moveToTop(index)
   })
 
-  dragDrop(DOM.songQueue, function (files) {
+  dragDrop('#my-queue', function (files) {
     // TODO: accept multiple files
     var file = files[0]
     var key = file.name

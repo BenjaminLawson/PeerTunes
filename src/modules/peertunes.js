@@ -243,8 +243,6 @@ PeerTunes.prototype.initClickHandlers = function () {
 
   // join DJ queue
   this.$joinQueueButton.click(function (e) {
-    console.log('Clicked join/leave queue')
-    
     if (!self._djSeq) {
       console.log('dj queue not defined, probably not in a room')
       return
@@ -256,7 +254,6 @@ PeerTunes.prototype.initClickHandlers = function () {
       // join dj queue
       
       if (self.joinDJQueue()) {
-        console.log('joined DJ queue')
         $(this).removeClass('btn-primary').addClass('btn-info').text('Leave DJ Queue')
       }
 
@@ -272,15 +269,12 @@ PeerTunes.prototype.initClickHandlers = function () {
   // TODO: keep button active after click
 
   this.$likeButton.click(function (e) {
-    console.log('Rate +1')
     if (self._moodSet) {
-      console.log('moodset+1')
       self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: true})
     }
   })
 
   this.$dislikeButton.click(function (e) {
-    console.log('Rate -1')
     if (self._moodSet) {
       self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: false})
     }
@@ -391,6 +385,12 @@ PeerTunes.prototype.initReplicationModels = function () {
   this._djSeq = this._doc.createSeq('type', 'djQueue')
 
   this._currentSong.on('update', function (data) {
+    if (data == null || !data.song) {
+      console.log('current song set to null, ending')
+      self.songManager.end()
+      return
+    }
+    
     var currentTime = Date.now() - data.startTime
 
     if (currentTime/1000 >= data.song.duration) {
@@ -420,6 +420,14 @@ PeerTunes.prototype.initReplicationModels = function () {
       if (self._djSeq.length() === 1) {
         // queue was empty, this is first dj
         self.playNextDJSong()
+      }
+    })
+
+    self._djSeq.on('remove', function (row) {
+      var song = self._currentSong.get()
+      // check if DJ that left was current DJ
+      if (song && song.userId === self.id) {
+        self._currentSong.set(null)
       }
     })
   }
@@ -618,6 +626,7 @@ PeerTunes.prototype.playNextDJSong = function () {
 
   if (this._djSeq.length() === 0) {
     console.log('no DJs in queue, nothing to play')
+    self._currentSong.set(null)
     return
   }
 
@@ -638,36 +647,35 @@ PeerTunes.prototype.playNextDJSong = function () {
 PeerTunes.prototype.seedFileWithKey = function (key, callback) {
   var self = this
 
-  console.log('current active torrents: ', this.activeTorrents, ', length: ', this.activeTorrents.length)
-
   // check if torrent already seeding
-  //console.log('comparing with active torrents:')
   for(var i = 0; i < this.activeTorrents.length; i++) {
-    //console.log('=> comparing key ', key, ' to torrent ', this.activeTorrents[i])
     if (this.activeTorrents[i].key === key) {
       console.log('torrent already exists, skipping')
       callback(this.activeTorrents[i])
       return
     }
   }
-  //console.log('torrent is not in active torrents, proceeding with seeding')
 
   // limit number of active torrents by removing oldest
-  // TODO: prevent currently playing song torrent from being removed (e.g. if top changes multiple times while playing)
-  if (this.activeTorrents.length > 2) {
+  // max length 2: 1 for currently playing, 1 for next up (in case this peer is the only DJ)
+  if (this.activeTorrents.length >= 2) {
     console.log('too many active torrents, removing oldest')
-    console.log(this.activeTorrents)
     var currentSong = this._currentSong.get()
     if (currentSong.song && currentSong.song.source === 'MP3') {
       for (var i = 0; i < this.activeTorrents.length; i++) {
-        //iterate until torrent that is not currently playing is found
+        // prevent torrent for currently playing song from being removed
         if (this.activeTorrents[i].key !== currentSong.song.id) {
           var oldest = this.activeTorrents[i]
-          console.log('removing oldest: ', oldest, ' current: ', currentSong)
+          this.activeTorrents.splice(i, 1)
           this.torrentClient.remove(oldest.torrent.infoHash)
           break
         }
       }
+    }
+    else {
+      // just remove a torrent, it can't be the current song
+      var oldest = this.activeTorrents.shift()
+      this.torrentClient.remove(oldest.torrent.infoHash)
     }
   }
   

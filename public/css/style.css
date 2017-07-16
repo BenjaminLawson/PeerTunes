@@ -126,7 +126,7 @@ body {
 #bottom-bar-cover {
   width: 46px;
   height: 100%;
-  background-size: cover;
+  background-size: contain;
   background-repeat: no-repeat;
   background-position: center center;
   /* background-image: url(http://www.designformusic.com/wp-content/uploads/2015/10/insurgency-digital-album-cover-design.jpg); */
