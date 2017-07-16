@@ -1,5 +1,7 @@
 # PeerTunes
-PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take turns playing songs and chat about them. 
+PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take turns playing songs and chat about them. Still very much in alpha!
+
+![Alt text](screenshot.jpg?raw=true "Screenshot of Working Alpha Version")
 
 ### Development
  - Automatically build changes to src/main.js : `npm run-script watch`
@@ -26,6 +28,7 @@ PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take
  - Basic player info/controls
  - Basic persistent song queue organizer
 ### Planned
+ - Security
  - Playlists
  - Soundcloud support
  - Friend system using RSA keys (exchange public keys, then have potential friend sign to confirm identity)
