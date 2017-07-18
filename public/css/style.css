@@ -6,35 +6,42 @@ body {
 
 }
 
-.sidebar {
-  z-index: 150;
+#media-container {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  margin: 0 auto;
+  width: 419px;
 }
 
 #video-container {
-	width: 419px;
-	height: 238px;
+  margin-left: auto;
+  margin-right: auto;
+  
+  width: 419px;
+  height: 238px;
 
-	border-style: solid;
-	border-width: 3px;
-	border-color: #404040;
-	background-color: black;
+  border-style: solid;
+  border-width: 3px;
+  border-color: #404040;
+  background-color: black;
 
-	margin-bottom: 5px;
+  margin-bottom: 5px;
   pointer-events: none;
 }
 
 #vid2 {
-    position: absolute;
-    top: 3px;
+  position: absolute;
+  top: 3px;
 }
 
 .full-height {
-	height: 100%;
+  height: 100%;
 }
 
 #chat .panel-body {
-	height: 400px;
-	overflow-y: scroll;
+  height: 100%;
+  overflow-y: scroll;
 }
 
 .cursor-pointer {
@@ -74,27 +81,41 @@ body {
   transition:top 0.5s;
 }
 
+#welcome .well {
+  width: 100%;
+  max-width: 370px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 
 /* Moshpit */
 #moshpit {
-	position: absolute;
-	width:95%;
-	height:300px;
+  margin: 0 auto;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 480px;
+  height: 300px;
+  width: 100%;
+  max-width: 600px;
 }
 
 /* audience members */
 .audience-member{
-	position: absolute;
+  position: absolute;
   width: 98px; /* width of head */
 }
 .audience-head{
-	position:  absolute;
+  position:  absolute;
 }
 
 .audience-body{
-	position: absolute;
-    top: 64px;
-    left: 23px;
+  position: absolute;
+  top: 64px;
+  left: 23px;
 }
 
 /* Popovers */
@@ -108,10 +129,29 @@ body {
 
 /* Sidebars */
 #sidebar-left {
-  width: 300px;
-  position: absolute;
-  left: 10px;
+  height: calc(100vh - 290px);
 }
+
+#sidebar-right {
+  right: 0px;
+  height: calc(100vh - 230px);
+}
+
+.sidebar {
+  position: absolute;
+  z-index: 150;
+  width:350px;
+  margin: 0 5px;
+}
+
+@media not all and (min-width: 992px) {
+  #sidebar-right {
+    top: 380px;
+    width: 100%;
+    height: calc(100vh - 550px);
+  }
+}
+
 
 /* Bottom Bar */
 #bottom-bar {
@@ -129,7 +169,6 @@ body {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center center;
-  /* background-image: url(http://www.designformusic.com/wp-content/uploads/2015/10/insurgency-digital-album-cover-design.jpg); */
 }
 
 #song-details {
@@ -175,8 +214,7 @@ body {
 
 /* My Queue */
 #my-queue .panel-body{
-	min-height: 390px;
-  max-height: 390px;
+  height: 100%;
   overflow-y: scroll;
 }
 
