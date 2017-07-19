@@ -31,6 +31,11 @@ var QueueController = require('../controllers/queue-controller')
 var QueueView = require('../views/queue-view')
 var QueueModel = require('../models/queue-model')
 
+// moshpit
+var MoshpitController = require('../controllers/moshpit-controller')
+var MoshpitView = require('../views/moshpit-view')
+var MoshpitModel = require('../models/moshpit-model')
+
 // TODO: add element selectors to config
 function PeerTunes (config) {
   var self = this
@@ -53,7 +58,7 @@ function PeerTunes (config) {
   this.chatController = new ChatController(this.chatView, this.chatModel)
 
   this.chatModel.on('new-chat', function (msg) {
-    self.avatarChatPopover(msg.userId, msg.message)
+    self.moshpitView.chatPopover(msg.userId, msg.message)
   })
 
   // Song Queue
@@ -89,8 +94,11 @@ function PeerTunes (config) {
     }
   })
 
+  this.moshpitModel = new MoshpitModel()
+  this.moshpitView = new MoshpitView({selector: config.moshpit.selector})
+  this.moshpitController = new MoshpitController(this.moshpitView, this.moshpitModel)
+
   this.tracker = null
-  //this.currentTorrentInfoHash = null
   this.activeTorrents = []
   
 
@@ -139,7 +147,6 @@ function PeerTunes (config) {
   this.docStreams = {}
 
   // cache jQuery selectors
-  this.$moshpit = $(config.selectors.moshpit)
   this.$likeButton = $(config.selectors.likeButton)
   this.$dislikeButton = $(config.selectors.dislikeButton)
   this.$joinQueueButton = $(config.selectors.joinQueueButton)
@@ -329,16 +336,16 @@ PeerTunes.prototype._onJoinRoom = function () {
   this.joinDocForRoom(this.room)
 
   // create avatars for self
-  self.addAvatar(this.id, this.username, false)
+  this.moshpitModel.addAvatar({id: self.id, nicename: self.username, avatar: 1, headbob: false})
   
   // create avatars for future users
   this.room.on('user:join', function (user) {
-    self.addAvatar(user.id, user.nicename, false)
+    self.moshpitModel.addAvatar({id: user.id, nicename: user.nicename, avatar: 1, headbob: false})
   })
 
   // remove avatars when users leave
   this.room.on('user:leave', function (user) {
-    self.removeAvatar(user.id)
+    self.moshpitModel.removeAvatar(user.id)
     
     if (self.room.isHost)  {
       self._doc.rm('dj-'+user.id)
@@ -427,11 +434,11 @@ PeerTunes.prototype.initReplicationModels = function () {
 
   this._moodSet.on('add', function (row) {
     row = row.toJSON()
-    self.setHeadBobbingForUser(row.userId, row.like)
+    self.moshpitModel.setHeadbobbing(row.userId, row.like)
   })
   this._moodSet.on('changes', function (row, changed) {
     row = row.toJSON()
-    self.setHeadBobbingForUser(row.userId, row.like)
+    self.moshpitModel.setHeadbobbing(row.userId, row.like)
   })
 }
 
@@ -497,8 +504,10 @@ PeerTunes.prototype.leaveRoom = function () {
 }
 
 PeerTunes.prototype.resetRoom = function () {
-  $('.audience-member').tooltip('destroy')
-  this.$moshpit.html('')
+  // TODO: move to moshpit view code
+  //$('.audience-member').tooltip('destroy')
+  
+  this.moshpitModel.removeAllAvatars()
   this.chatModel.deleteAllMessages()
   this.$leaveButton.hide()
 }
@@ -690,82 +699,6 @@ PeerTunes.prototype.seedFileWithKey = function (key, callback) {
   }).catch(function (err) {
     console.log('Error retrieving mp3: ', err)
   })
-}
-
-PeerTunes.prototype.removeLastTorrent = function () {
-  if (this.currentTorrentInfoHash != null) {
-    console.log('Removing torrent: ', this.currentTorrentInfoHash)
-    this.torrentClient.remove(this.currentTorrentInfoHash)
-    this.currentTorrentInfoHash = null
-  }
-}
-
-
-PeerTunes.prototype.addAvatar = function (id, nicename, headbob) {
-  console.log('Adding avatar for ', id, ' with headbob ', (headbob === true))
-  var x = Math.random() * 80 + 10
-  var y = Math.random() * 100 + 5
-  var userId = 'user-' + id
-
-  var template = $('#avatarTmpl').html()
-  Mustache.parse(template)
-  var params = {userId: userId, label: id, avatar: 1, x: x, y: y, z: Math.floor(y)}
-  var rendered = Mustache.render(template, params)
-
-  var $avatar = $(rendered)
-  if (headbob === true) $avatar.find('.audience-head').addClass('headbob-animation')
-
-  // popover init
-  template = $('#popoverTmpl').html()
-  Mustache.parse(template)
-  params = {nicename: nicename}
-  rendered = Mustache.render(template, params)
-  $avatar.webuiPopover({title: '', content: rendered, placement: 'top', trigger: 'hover', padding: false})
-
-  this.$moshpit.append($avatar)
-}
-
-PeerTunes.prototype.removeAvatar = function (id) {
-  console.log('Removing avatar for ', id)
-  var $avatar = $('#user-' + id)
-  $avatar.remove()
-  $avatar.webuiPopover('destroy')
-}
-
-PeerTunes.prototype.setHeadBobbingForUser = function (userId, bobbing) {
-  var $avatarHead = $('#user-' + userId + ' .audience-head')
-  $avatarHead.toggleClass('headbob-animation', bobbing)
-}
-
-PeerTunes.prototype.stopAllHeadBobbing = function () {
-  $('.audience-head').removeClass('headbob-animation')
-}
-
-
-//TODO: fix autoHide hiding other popovers
-PeerTunes.prototype.avatarChatPopover = function (id, content) {
-  content = '<div class="text-center">'+content+'</div>'
-
-  var selector = '#user-'+id+' .audience-head'
-  $user = $(selector)
-  var options = {
-    title: '',
-    placement: 'top',
-    content: content,
-    trigger:'manual',
-    width: 190,
-    animation: 'pop',
-    multi: true,
-    cache: false, // doesn't work?
-    autoHide: 2600,
-    onHide: function ($el) { // hack so content will update
-      $user.webuiPopover('destroy')
-    }
-  }
-
-  $user.webuiPopover(options)
-
-  $user.webuiPopover('show')
 }
 
 
