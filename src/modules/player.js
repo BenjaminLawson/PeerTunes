@@ -6,7 +6,7 @@
 // TODO: clean up torrents after layed
 
 // modules
-var TagReader = require('./tag-reader')
+var TagReader = require('../lib/tag-reader')
 var localforage = require('localforage')
 
 module.exports = Player

@@ -4,8 +4,8 @@ var createTorrent = require('create-torrent')
 var parseTorrent = require('parse-torrent')
 
 //modules
-var TagReader = require('../modules/tag-reader')
-var SongDuration = require('../modules/song-duration')
+var TagReader = require('../lib/tag-reader')
+var SongDuration = require('../lib/song-duration')
 
 module.exports = QueueController
 
@@ -53,7 +53,9 @@ function QueueController (view, model, config) {
     console.log('Reading tags')
     
     // TODO: clean up callbacks
-    self.tagReader.tagsFromFile(file, function (tags) {
+    self.tagReader.tagsFromFile(file, onTags)
+
+    function onTags (tags) {
       SongDuration.get(file, function (duration) {
         self._calculateInfoHash(file, function (infoHash, err) {
           if (err) {
@@ -65,7 +67,7 @@ function QueueController (view, model, config) {
           console.log('Added song to queue model: ', song)
         })
       })
-    })
+    }
 
     // store files in localstorage so they can be seeded in future
     // TODO: add loading indicator while song saved to localstorage

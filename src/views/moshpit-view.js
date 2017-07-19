@@ -42,7 +42,7 @@ MoshpitView.prototype.removeAvatar = function (user) {
 
 MoshpitView.prototype.setHeadbobbing = function (id, headbob) {
   var $avatarHead = $('#user-' + id + ' .audience-head')
-  $avatarHead.toggleClass('headbob-animation', bobbing)
+  $avatarHead.toggleClass('headbob-animation', headbob)
 }
 
 MoshpitView.prototype._initPopover = function (user, $avatar) {

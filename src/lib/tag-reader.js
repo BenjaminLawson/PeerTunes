@@ -12,7 +12,6 @@ TagReader.prototype.tagsFromFile = function (file, callback) {
   mediaTags.read(file, {
       onSuccess: function(tag) {
         tag = tag.tags
-        //console.log(tag)
 
         //https://github.com/aadsm/jsmediatags/issues/13
         if (tag.picture) {

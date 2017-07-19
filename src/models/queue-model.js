@@ -52,8 +52,20 @@ QueueModel.prototype.front = function () {
 }
 
 QueueModel.prototype.removeSongAtPosition = function (index) {
-  this.songs.splice(index, 1)
+  var removed = this.songs.splice(index, 1)
+  var song = removed[0]
+  
   this._save()
+
+  // if song is an MP3, delete from storage to free disk space
+  if (song.source === 'MP3') {
+    localforage.removeItem(song.id).then(function() {
+      console.log('MP3 file deleted')
+    }).catch(function(err) {
+      console.log('Error deleting mp3 from storage: ', err)
+    })
+  }
+  
   this.emit('remove-song', index)
   this.emit('queue:change', this.songs)
 }

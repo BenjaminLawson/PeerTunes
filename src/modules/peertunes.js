@@ -1,4 +1,5 @@
 // TODO: refactor host-only code to its own init function
+// TODO: replace rooms modal with view covering screen
 
 // Globals
 //var $, emojione
@@ -15,7 +16,7 @@ var pump = require('pump')
 var Value = require('r-value')
 
 // modules
-var YT = require('./YT')
+var YT = require('../lib/YT')
 var Player = require('./player')
 var SongManager = require('./song-manager')
 var Lobby = require('./lobby')
@@ -158,7 +159,7 @@ function PeerTunes (config) {
 }
 
 PeerTunes.prototype.initClickHandlers = function () {
-  var self = this // cache since 'this' is bound in click callbacks
+  var self = this
 
   // key listeners
   var ENTER_KEY = 13
@@ -292,6 +293,8 @@ PeerTunes.prototype.initClickHandlers = function () {
 
 PeerTunes.prototype._joinLobby = function () {
   var self = this
+
+  console.log('joining lobby')
   
   var lobby = new Lobby({
     maxPeers: 6,
@@ -501,12 +504,15 @@ PeerTunes.prototype.leaveRoom = function () {
 
   // resets room elements (chat, moshpit, etc)
   this.resetRoom()
+
+  // rejoin lobby if not already in lobby
+  if (!this.lobby) {
+    this.lobby = this._joinLobby()
+  }
+  
 }
 
 PeerTunes.prototype.resetRoom = function () {
-  // TODO: move to moshpit view code
-  //$('.audience-member').tooltip('destroy')
-  
   this.moshpitModel.removeAllAvatars()
   this.chatModel.deleteAllMessages()
   this.$leaveButton.hide()
@@ -550,21 +556,17 @@ PeerTunes.prototype.joinDJQueue = function () {
   var front = self.queueModel.front()
   
   if (front.source === 'MP3') {
-    console.log('on queue join, front is mp3, seeding')
+    console.log('on queue join, front is mp3 => seeding')
     self.seedFileWithKey(front.id, function (torrent) {
-      console.log('setting new song')
       self._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, userId: self.id, username: self.username, song: front})
-      console.log('djSeq: ', self._djSeq.toJSON())
     })
   }
   else {
     this._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, userId: self.id, username: self.username, song: self.queueModel.front()})
-    console.log('djSeq: ', this._djSeq.toJSON())
   }
   
   return true
 }
-
 
 // HOST function
 PeerTunes.prototype.cycleDJQueue = function () {
@@ -575,20 +577,21 @@ PeerTunes.prototype.cycleDJQueue = function () {
 }
 
 PeerTunes.prototype.refreshRoomListing = function () {
-  //console.log('refreshing room listing')
+  var self = this
+
+  if (!this.lobby) {
+    console.log('Can\'t refresh lobby listing because not connected to lobby')
+    return
+  }
 
   // make element of all rooms at once, then append
   var template = $('#roomRowTmpl').html()
   Mustache.parse(template)
 
   var $ul = $('<ul>').addClass('list-unstyled')
-  var self = this
-  $.each(this.lobby.getRooms(), function (i, room) {
-    //console.log('lobby room ', room)
+  this.lobby.getRooms().forEach(function (room) {
     var id = room.creator
     var params = {id: id, title: room.name}
-    //console.log('Rendering template for: ')
-    //console.log(params)
     var $row = $(Mustache.render(template, params))
     $row.click(function () {
       $('#roomModal').modal('toggle')
@@ -599,6 +602,7 @@ PeerTunes.prototype.refreshRoomListing = function () {
     })
     $ul.append($row)
   })
+
   $('#roomModal .modal-body').html($ul)
 }
 
