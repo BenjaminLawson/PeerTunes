@@ -35,10 +35,16 @@ https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL
 to free up memory
 
 TODO: convert all times to same timezone
+
+TODO: private rooms (host doesn't post to lobby & just leaves lobby when creating room)
+- need to implement public key url hash first
+
+TODO: check localforage for keypair/username, skip login screen if found
+TODO: router
 */
 
 var sodium = require('sodium-universal')
-
+var localforage = require('localforage')
 
 var PeerTunes = require('./modules/peertunes')
 
