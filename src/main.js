@@ -46,14 +46,19 @@ TODO: router
 var sodium = require('sodium-universal')
 var localforage = require('localforage')
 
+var Router = require('./modules/router')
 var PeerTunes = require('./modules/peertunes')
 
 var config =require('./config')
 
 $(document).ready(function () {
+  // initialize routing
+  var router = new Router()
+  /*
   $('#btn-login').click(function (e) {
     init()
   })
+*/
 })
 
 function init () {

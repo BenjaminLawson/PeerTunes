@@ -20,7 +20,7 @@ function P2PLobby (opts) {
     this.private = opts.private
     this.public = opts.public
     this.id = crypto.createHash('sha1').update(this.public).digest('hex')
-    console.log('my id: ', this.id)
+    console.log('my lobby id: ', this.id)
 
     this.nicename = opts.nicename
 

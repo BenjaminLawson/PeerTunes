@@ -11,7 +11,7 @@ http.listen(3000, function() {
 
 //HTTP
 app.get('/', function(req, res) {
-    res.render('pages/index');
+    res.render('index');
 });
 
 

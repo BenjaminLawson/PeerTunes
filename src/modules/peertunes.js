@@ -576,36 +576,6 @@ PeerTunes.prototype.cycleDJQueue = function () {
   this._djSeq.after(this._djSeq.first(), this._djSeq.last())
 }
 
-PeerTunes.prototype.refreshRoomListing = function () {
-  var self = this
-
-  if (!this.lobby) {
-    console.log('Can\'t refresh lobby listing because not connected to lobby')
-    return
-  }
-
-  // make element of all rooms at once, then append
-  var template = $('#roomRowTmpl').html()
-  Mustache.parse(template)
-
-  var $ul = $('<ul>').addClass('list-unstyled')
-  this.lobby.getRooms().forEach(function (room) {
-    var id = room.creator
-    var params = {id: id, title: room.name}
-    var $row = $(Mustache.render(template, params))
-    $row.click(function () {
-      $('#roomModal').modal('toggle')
-      console.log('Joining room: ' + id)
-      
-      self.joinRoom(room.pubkey)
-      
-    })
-    $ul.append($row)
-  })
-
-  $('#roomModal .modal-body').html($ul)
-}
-
 PeerTunes.prototype.onSongEnd = function () {
   var self = this
 

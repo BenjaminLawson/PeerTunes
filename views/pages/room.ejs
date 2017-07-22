@@ -1,0 +1,78 @@
+<div class="page" id="room" style="display: none">
+  
+  <div id="sidebar-left" class="sidebar hidden-sm hidden-xs">
+    <div id="my-queue" class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">My Queue</h3>
+      </div>
+      <div class="panel-body no-padding">
+        <ul id="my-queue-list" class="list-group">
+        </ul>
+      </div>
+      <div class="panel-footer">
+        <button id="add-song-button" class="btn btn-default btn-block" type="button" data-toggle="modal" data-target="#addSongModal">
+	  <span class="glyphicon glyphicon-plus"></span> Add New Songs
+        </button>
+      </div>
+    </div>
+    <button type="button" id="btn-join-queue" class="btn btn-primary btn-large btn-block">Join DJ Lineup</button>
+  </div>
+
+  <div id="media-container">
+    <div id="video-container">
+      <div id="video-frame" style="display: none;">
+        <video
+            id="vid1"
+            class="video-js vjs-default-skin"
+            width="413" height="231"
+            data-setup='{ "techOrder": ["html5","youtube"], "sources": [], "youtube": { "iv_load_policy": 3, "disablekb": 1, "modestbranding": 1, "autoplay": 1 }}'
+        >
+        </video>
+        <audio 
+            id="vid2" 
+            class="video-js vjs-default-skin" 
+            preload="auto"
+            width="413" height="231"
+            data-setup="{ }">
+        </audio>
+      </div>
+    </div>
+
+    <div class="btn-group btn-group-justified" role="group" aria-label="...">
+      <div class="btn-group" role="group">
+        <button type="button" id="like-button" class="btn btn-success btn-lg"><span class="glyphicon glyphicon-thumbs-up" aria-hidden="true"></span></button>
+      </div>
+      <div class="btn-group" role="group">
+        <button type="button" id="dislike-button" class="btn btn-danger btn-lg"><span class="glyphicon glyphicon-thumbs-down" aria-hidden="true"></span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="moshpit" class="center-block hidden-sm hidden-xs"></div>
+
+  <div id="sidebar-right" class="sidebar">
+    <div id="chat" class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title">Chat</h3>
+      </div>
+      <div class="panel-body no-padding">
+        <ul id="chat-list" class="list-group">
+	  <li class="message list-group-item">
+	    <h6 class="message-user text-primary">Welcome!</h6>
+	    <span class="message-text">Click "Rooms" to join a room.</span>
+	  </li>
+        </ul>
+      </div>
+      <div class="panel-footer">
+        <div class="input-group">
+	  <input type="text" id="chat-text" class="form-control" placeholder="Enter message here...">
+	  <span class="input-group-btn">
+	    <button id="chat-enter" class="btn btn-default" type="button">Enter</button>
+	  </span>
+        </div>
+      </div>
+    </div>  
+  </div>
+
+  <% include ../partials/bottomBar %>
+</div>
