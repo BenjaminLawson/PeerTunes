@@ -41,6 +41,8 @@ var MoshpitModel = require('../models/moshpit-model')
 function PeerTunes (config) {
   var self = this
 
+  console.log(config)
+
   if (!Peer.WEBRTC_SUPPORT) {
     window.alert('This browser is unsupported. Please use a browser with WebRTC support.')
     return
@@ -133,10 +135,6 @@ function PeerTunes (config) {
   // replace ascii with emoji
   emojione.ascii = true
 
-  // lobby set up
-  this.room = null
-  this.lobby = this._joinLobby()
-
   // room set up
   this._doc = null
   this._chatSet = null
@@ -146,6 +144,16 @@ function PeerTunes (config) {
 
   // map peer ids to crdt streams
   this.docStreams = {}
+
+   // lobby set up
+  this.room = config.room
+  if (this.room) {
+    console.log('peertunes room exists')
+    this._onJoinRoom()
+  } else {
+    console.log('peertunes join room with pubkey ', config.roomPubkey)
+    this.room = this.joinRoom(config.roomPubkey)
+  }
 
   // cache jQuery selectors
   this.$likeButton = $(config.selectors.likeButton)
@@ -310,7 +318,7 @@ PeerTunes.prototype._joinLobby = function () {
   return lobby
 }
 
-// pubkey is base64 encoded public key of room host
+// pubkey is hex encoded public key of room host
 PeerTunes.prototype.joinRoom = function (pubkey) {
   var self = this
 
@@ -370,6 +378,7 @@ PeerTunes.prototype.initReplicationModels = function () {
   var self = this
   
   this._doc = new Doc()
+  console.log('_doc: ', this._doc)
   this._currentSong = new Value()
   this._chatSeq = this._doc.createSeq('type', 'chat')
   this._moodSet = this._doc.createSet('type', 'mood')
@@ -380,6 +389,7 @@ PeerTunes.prototype.initReplicationModels = function () {
   })
 
   this.chatController.on('chat:submit', function (msg) {
+    console.log(self)
     self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
   })
 
@@ -702,6 +712,7 @@ PeerTunes.prototype.doSongSearch = function () {
     $('#song-search-results').append(resultsHTML)
 
     $('.song-search-result').click(function (e){
+      e.preventDefault()
       $(this).addClass('active')
       var source = 'YOUTUBE' //TODO: get source from current search type (only YT for now)
       var id = $(this).data('id')

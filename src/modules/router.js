@@ -1,7 +1,9 @@
 var localforage = require('localforage')
 var sodium = require('sodium-universal')
+var config = require('../config')
 
 var LobbyController = require('../controllers/lobby-controller')
+var Peertunes = require('./peertunes')
 
 module.exports = Router
 
@@ -14,14 +16,22 @@ function Router () {
   
   self.render(decodeURI(window.location.hash))
   
-  $(window).on('hashchange', function(){
-    console.log('hashchange: ', window.location.hash)
-    self.render(decodeURI(window.location.hash))   
+  $(window).bind('popstate', function (e) {
+    console.log('popstate ', e)
+    self.render(decodeURI(window.location.hash))
   })
+}
+
+Router.prototype.route = function (path, opts) {
+  console.log('Router: route ', path, opts)
+  history.pushState(null, null, path)
+  this.render(path, opts)
 }
 
 Router.prototype.render = function (hash, opts) {
   var self = this
+
+  opts = opts || {}
   
   // first check if identity exists
   if (!this.identity && hash !== '#login') {
@@ -35,16 +45,16 @@ Router.prototype.render = function (hash, opts) {
       else {
         self.identity = identity
         
-        handleRoute(hash)
+        handleRoute(hash, opts)
       }
     })
     return
   }
 
-  handleRoute(hash)
+  handleRoute(hash, opts)
 
-  function handleRoute (route) {
-    console.log('handle route')
+  function handleRoute (route, opts) {
+    console.log('handle route ', route, opts)
     var parts = route.split('/')
     var path = parts[0]
     
@@ -72,6 +82,14 @@ Router.prototype.render = function (hash, opts) {
         $('.page#room').show()
 
         // render buttons
+
+        // init room
+        config.lobby = opts.lobby
+        config.room = opts.room
+        config.roomPubkey = parts[1]
+        config.username = self.identity.username
+        config.keys = self.identity.keypair
+        var room = new Peertunes(config)
       }
     }
 
@@ -79,7 +97,7 @@ Router.prototype.render = function (hash, opts) {
     $('#main-content .page').hide()
 
     if (routes[path]) {
-      routes[path]()
+      routes[path](opts)
     }
     else {
       // invalid route
@@ -94,7 +112,7 @@ Router.prototype.render = function (hash, opts) {
 
 Router.prototype.redirect = function (hash) {
   console.log('Router: redirecting to ', hash)
-  window.location.hash = hash
+  this.route(hash)
 }
 
 Router.prototype.getIdentity = function (cb) {

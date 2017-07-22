@@ -52,6 +52,7 @@ LobbyController.prototype._initClickHandlers = function () {
     var room = self.lobby.createRoom(roomName)
 
     //window.location.hash = '#room/'+self.keypair.public.toString('hex')
+    self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {lobby: self.lobby, room: room})
     
     //self._onJoinRoom()
     console.log('created room ', roomName)
