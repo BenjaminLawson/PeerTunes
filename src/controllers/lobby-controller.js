@@ -19,15 +19,6 @@ function LobbyController(opts) {
   this._initClickHandlers()
 
   this.lobby = this._joinLobby()
-
-  /*
-  this.identity = null
-  localforage.getItem('identity').then(function (identity) {
-    self.identity = identity
-  }).catch(function (error) {
-    console.log(error)
-  })
-*/
 }
 
 LobbyController.prototype._initClickHandlers = function () {
@@ -35,7 +26,6 @@ LobbyController.prototype._initClickHandlers = function () {
   // create room
   $('#btn-create-room').click(function (e) {
      $('#createRoomModal').modal('toggle')
-    //window.location.hash = '#room/'+self.keypair..public.toString('hex')
   })
 
   // modal create room
@@ -49,12 +39,11 @@ LobbyController.prototype._initClickHandlers = function () {
     
     var roomName = $('#roomNameInput').val()
     
-    var room = self.lobby.createRoom(roomName)
+    //var room = self.lobby.createRoom(roomName)
 
     //window.location.hash = '#room/'+self.keypair.public.toString('hex')
-    self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {lobby: self.lobby, room: room})
-    
-    //self._onJoinRoom()
+    self.lobby.leave()
+    self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {room: {name: roomName}})
     console.log('created room ', roomName)
     
     $('#roomNameInput').val('')

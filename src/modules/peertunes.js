@@ -15,6 +15,8 @@ var crypto = require('crypto-browserify')
 var pump = require('pump')
 var Value = require('r-value')
 
+var config = require('../config')
+
 // modules
 var YT = require('../lib/YT')
 var Player = require('./player')
@@ -38,9 +40,16 @@ var MoshpitView = require('../views/moshpit-view')
 var MoshpitModel = require('../models/moshpit-model')
 
 // TODO: add element selectors to config
-function PeerTunes (config) {
+function PeerTunes (opts) {
   var self = this
 
+  var isHost = (opts.identity.keypair.public.toString('hex') === opts.roomPubkey)
+
+  if (isHost && !opts.room) {
+    console.log('user is host, but is missing room parameters')
+    return
+  } 
+  
   console.log(config)
 
   if (!Peer.WEBRTC_SUPPORT) {
@@ -50,11 +59,12 @@ function PeerTunes (config) {
 
   this.config = config // TODO: use defaults if not provided
 
-  this.keys = config.keys
+  this.identity = opts.identity
+  this.keys = this.identity.keypair
 
   // Chat
   this.chatModel = new ChatModel({
-    username: config.username,
+    username: opts.username,
     maxMessageLength: 400
   })
   this.chatView = new ChatView(this.chatModel, config.chat)
@@ -122,8 +132,8 @@ function PeerTunes (config) {
     console.log('[Torrent client] error: ', err)
   })
 
-  this.username = config.username
-  this.id = crypto.createHash('sha1').update(config.keys.public).digest('hex')
+  this.username = opts.identity.username
+  this.id = crypto.createHash('sha1').update(this.identity.keypair.public).digest('hex')
 
   config.player.torrentClient = this.torrentClient
   this.player = new Player(config.player)
@@ -146,14 +156,18 @@ function PeerTunes (config) {
   this.docStreams = {}
 
    // lobby set up
-  this.room = config.room
-  if (this.room) {
-    console.log('peertunes room exists')
-    this._onJoinRoom()
-  } else {
-    console.log('peertunes join room with pubkey ', config.roomPubkey)
-    this.room = this.joinRoom(config.roomPubkey)
+  this.room = null
+  this.lobby = null
+ 
+  if (isHost) {
+    this.lobby = self._joinLobby()
+    this.room = this.lobby.createRoom(opts.room.name)
+    this._onJoinRoom(this.room)
   }
+  else {
+    this.room = self.joinRoom(opts.roomPubkey)
+  }
+  
 
   // cache jQuery selectors
   this.$likeButton = $(config.selectors.likeButton)
@@ -208,50 +222,10 @@ PeerTunes.prototype.initClickHandlers = function () {
     $('#song-search-input').val('')
   })
 
-  // create room
-  $('#btn-create-room').click(function (e) {
-    if (self.room) {
-      self.resetRoom()
-    }
-
-    if (self.room && self.room.isHost) { // button = Destroy Room
-      self.leaveRoom()
-      self.lobby.closeRoom()
-
-      $(this).text('Create Room')
-    } else {
-      $('#createRoomModal').modal('toggle')
-    }
-  })
-
-  // modal create room
-  $('#modal-btn-create-room').click(function (e) {
-    if ($('#roomNameInput').val().length < 1) {
-      e.stopPropagation()
-      $('#create-room-form-group').addClass('has-error')
-      return
-    }
-    $('#create-room-form-group').removeClass('has-error')
-    $('#btn-create-room').text('Destroy Room')
-    
-    if (self.room) {
-      self.leaveRoom()
-    }
-    var roomName = $('#roomNameInput').val()
-    
-    self.room = self.lobby.createRoom(roomName)
-    self._onJoinRoom()
-    
-    $('#roomNameInput').val('')
-  })
-
-  this.$leaveButton.click(function (e) {
-    $(this).hide()
-    self.leaveRoom()
-  })
 
   // join DJ queue
   this.$joinQueueButton.click(function (e) {
+    console.log('join dj queue button clicked')
     if (!self._djSeq) {
       console.log('dj queue not defined, probably not in a room')
       return
@@ -261,14 +235,13 @@ PeerTunes.prototype.initClickHandlers = function () {
     
     if (!inQueue) {
       // join dj queue
-      
       if (self.joinDJQueue()) {
         $(this).removeClass('btn-primary').addClass('btn-info').text('Leave DJ Queue')
       }
 
       return
     }
-    
+    console.log('already in dj queue')
     // if in dj queue, leave dj queue
     self.leaveDJQueue()
 
@@ -288,15 +261,6 @@ PeerTunes.prototype.initClickHandlers = function () {
       self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: false})
     }
   })
-  // room modal
-  $('button[data-target="#roomModal"]').click(function (event) {
-    console.log('clicked rooms button')
-    self.refreshRoomListing()
-  })
-
-  $('#room-refresh').click(function (event) {
-    self.refreshRoomListing()
-  })
 }
 
 PeerTunes.prototype._joinLobby = function () {
@@ -306,8 +270,8 @@ PeerTunes.prototype._joinLobby = function () {
   
   var lobby = new Lobby({
     maxPeers: 6,
-    public: self.config.keys.public,
-    private: self.config.keys.private,
+    public: self.keys.public,
+    private: self.keys.private,
     nicename: self.username
   })
 
@@ -324,38 +288,35 @@ PeerTunes.prototype.joinRoom = function (pubkey) {
 
   console.log('joining room with key ', pubkey)
 
-  // leave lobby
-  this.lobby.leave()
-  this.lobby = null
-
-  this.room = new HostedRoom({
+  var room = new HostedRoom({
     hostKey: pubkey,
-    isHost: false,
-    public: self.config.keys.public,
-    private: self.config.keys.private,
+    public: self.keys.public,
+    private: self.keys.private,
     nicename: self.username
   })
 
-  $('#btn-leave-room').show()
+  this._onJoinRoom(room)
 
-  this._onJoinRoom()
+  return room
 }
 
-PeerTunes.prototype._onJoinRoom = function () {
+PeerTunes.prototype._onJoinRoom = function (room) {
   var self = this
+
+  console.log('onJoinRoom')
   
-  this.joinDocForRoom(this.room)
+  this.joinDocForRoom(room)
 
   // create avatars for self
   this.moshpitModel.addAvatar({id: self.id, nicename: self.username, avatar: 1, headbob: false})
   
   // create avatars for future users
-  this.room.on('user:join', function (user) {
+  room.on('user:join', function (user) {
     self.moshpitModel.addAvatar({id: user.id, nicename: user.nicename, avatar: 1, headbob: false})
   })
 
   // remove avatars when users leave
-  this.room.on('user:leave', function (user) {
+  room.on('user:leave', function (user) {
     self.moshpitModel.removeAvatar(user.id)
     
     if (self.room.isHost)  {
@@ -374,92 +335,11 @@ PeerTunes.prototype.closeStreams = function () {
   })
 }
 
-PeerTunes.prototype.initReplicationModels = function () {
-  var self = this
-  
-  this._doc = new Doc()
-  console.log('_doc: ', this._doc)
-  this._currentSong = new Value()
-  this._chatSeq = this._doc.createSeq('type', 'chat')
-  this._moodSet = this._doc.createSet('type', 'mood')
-
-  this._chatSeq.on('add', function (row) {
-    row = row.toJSON()
-    self.chatModel.addMessage({userId: row.userId, username: row.username, message: row.message})
-  })
-
-  this.chatController.on('chat:submit', function (msg) {
-    console.log(self)
-    self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
-  })
-
-  // DJ queue sequence
-  // {id, username, song}
-  this._djSeq = this._doc.createSeq('type', 'djQueue')
-
-  this._currentSong.on('update', function (data) {
-    if (data == null || !data.song) {
-      console.log('current song set to null, ending')
-      self.songManager.end()
-      return
-    }
-    
-    var currentTime = Date.now() - data.startTime
-
-    if (currentTime/1000 >= data.song.duration) {
-      console.log('skipping song that already ended')
-      return
-    }
-
-    var isDJ = data.userId === self.id
-
-    if (!isDJ) {
-      self.songManager.end()
-    }
-    
-    self.player.play(data.song, currentTime, isDJ)
-    self.songManager.play(data.song)
-
-    // if this user is the new DJ, cycle song queue
-    if (isDJ) {
-      console.log('user is now DJ, cycling song queue')
-      self.queueModel.cycle()
-    }
-  })
-
-  if (this.room.isHost) {
-    self._djSeq.on('add', function (row) {
-      row = row.toJSON()
-      if (self._djSeq.length() === 1) {
-        // queue was empty, this is first dj
-        self.playNextDJSong()
-      }
-    })
-
-    self._djSeq.on('remove', function (row) {
-      var song = self._currentSong.get()
-      // check if DJ that left was current DJ
-      if (song && song.userId === self.id) {
-        self._currentSong.set(null)
-      }
-    })
-  }
-
-  this._moodSet.on('add', function (row) {
-    row = row.toJSON()
-    self.moshpitModel.setHeadbobbing(row.userId, row.like)
-  })
-  this._moodSet.on('changes', function (row, changed) {
-    row = row.toJSON()
-    self.moshpitModel.setHeadbobbing(row.userId, row.like)
-  })
-}
-
 // joins p2p replicated data structures for room
 PeerTunes.prototype.joinDocForRoom = function (room) {
   var self = this
-
-  this.initReplicationModels()
+  
+  this.initReplicationModels(room)
 
   // create replication streams
   room.on('peer:connect', function (peer) {
@@ -487,6 +367,91 @@ PeerTunes.prototype.joinDocForRoom = function (room) {
   })
 }
 
+PeerTunes.prototype.initReplicationModels = function (room) {
+  var self = this
+  
+  this._doc = new Doc()
+  console.log('_doc: ', this._doc)
+  this._currentSong = new Value()
+  this._chatSeq = this._doc.createSeq('type', 'chat')
+  this._moodSet = this._doc.createSet('type', 'mood')
+
+  this._chatSeq.on('add', function (row) {
+    row = row.toJSON()
+    self.chatModel.addMessage({userId: row.userId, username: row.username, message: row.message})
+  })
+
+  this.chatController.on('chat:submit', function (msg) {
+    self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
+  })
+
+  // DJ queue sequence
+  // {id, username, song}
+  this._djSeq = this._doc.createSeq('type', 'djQueue')
+
+  this._currentSong.on('update', function (data) {
+    console.log('current song update', data)
+    if (data == null || !data.song) {
+      console.log('current song set to null, ending')
+      self.songManager.end()
+      return
+    }
+    
+    var currentTime = Date.now() - data.startTime
+
+    if (currentTime/1000 >= data.song.duration) {
+      console.log('skipping song that already ended')
+      return
+    }
+    
+    var isDJ = (data.userId === self.id)
+
+    // ensure previous song has stopped playing
+    self.player.end()
+    
+    self.player.play(data.song, currentTime, isDJ)
+    self.songManager.play(data.song)
+
+    // if this user is the new DJ, cycle song queue
+    if (isDJ) {
+      console.log('user is now DJ, cycling song queue')
+      self.queueModel.cycle()
+    }
+  })
+
+  console.log(room)
+  if (room.isHost) {
+    
+    self._djSeq.on('add', function (row) {
+      console.log('djSeq add')
+      row = row.toJSON()
+      if (self._djSeq.length() === 1) {
+        // queue was empty, this is first dj
+        self.playNextDJSong()
+      }
+    })
+
+    self._djSeq.on('remove', function (row) {
+      console.log('djSeq remove')
+      row = row.toJSON()
+      var song = self._currentSong.get()
+      // check if DJ that left was current DJ
+      if (song && song.userId === row.userId) {
+        self.songManager.end()
+      }
+    })
+  }
+
+  this._moodSet.on('add', function (row) {
+    row = row.toJSON()
+    self.moshpitModel.setHeadbobbing(row.userId, row.like)
+  })
+  this._moodSet.on('changes', function (row, changed) {
+    row = row.toJSON()
+    self.moshpitModel.setHeadbobbing(row.userId, row.like)
+  })
+}
+
 PeerTunes.prototype.leaveRoom = function () {
   var self = this
 
@@ -497,7 +462,6 @@ PeerTunes.prototype.leaveRoom = function () {
   if (this.isInDJQueue()) {
     this.leaveDJQueue()
   } 
-
 
   // cleans up peers and trackers
   self.room.leave()
@@ -511,15 +475,8 @@ PeerTunes.prototype.leaveRoom = function () {
 
   this.closeStreams()
 
-
   // resets room elements (chat, moshpit, etc)
   this.resetRoom()
-
-  // rejoin lobby if not already in lobby
-  if (!this.lobby) {
-    this.lobby = this._joinLobby()
-  }
-  
 }
 
 PeerTunes.prototype.resetRoom = function () {
@@ -693,8 +650,6 @@ PeerTunes.prototype.doSongSearch = function () {
   var search = $('#song-search-input').val()
   if (search.length < 1) return
   YT.getSearchResults(search, function (results) {
-    console.log('Search results: ', results)
-
     var template = $('#songSearchResultTmpl').html()
     Mustache.parse(template)
     

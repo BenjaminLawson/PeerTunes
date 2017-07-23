@@ -12,64 +12,61 @@ var inherits = require('util').inherits
 var SONG_END_TIME_BUFFER = 2
 
 function SongManager () {
-    this.meta = {}
-    this.updater = null
-    this.timeout = null
-    this.playing = false
+  this.meta = {}
+  this.updater = null
+  this.timeout = null
+  this.playing = false
 
-    EventEmitter.call(this)
+  EventEmitter.call(this)
 }
 
 inherits(SongManager, EventEmitter)
 
 // end must be called before play
 SongManager.prototype.play = function (meta) {
-    var self = this
+  var self = this
 
-    //console.log('SongManager play')
+  this.emit('song-start')
 
-    this.emit('song-start')
-    this.playing = true
+  this.playing = true
 
-    this.meta = meta
-    this.meta.currentTime = 0
+  this.meta = meta
+  this.meta.currentTime = 0
 
-    this.updater = setInterval(function () {
-        self.meta.currentTime += 500
-    }, 500)
+  this.updater = setInterval(function () {
+    self.meta.currentTime += 500
+  }, 500)
 
-    clearTimeout(this.timeout)
-    this.timeout = setTimeout(function () {
-        clearInterval(self.updater)
-        self.end()
-    }, (meta.duration + SONG_END_TIME_BUFFER) * 1000)
+  clearTimeout(this.timeout)
+  this.timeout = setTimeout(function () {
+    clearInterval(self.updater)
+    self.end()
+  }, (meta.duration + SONG_END_TIME_BUFFER) * 1000)
 }
 
 SongManager.prototype.end = function () {
-    //console.log('SongManager end')
+  // if nothing playing, just return
+  if (!this.playing) return
 
-    // if nothing playing, just return
-    if (!this.playing) return
-
-    clearTimeout(this.timeout)
-    clearInterval(this.updater)
-    this.meta = {}
-    this.playing = false
-    this.emit('song-end')
+  clearTimeout(this.timeout)
+  clearInterval(this.updater)
+  this.meta = {}
+  this.playing = false
+  this.emit('song-end')
 }
 
 SongManager.prototype.isPlaying = function () {
-    return this.playing
+  return this.playing
 }
 
 SongManager.prototype.getMeta = function () {
-    return this.meta
+  return this.meta
 }
 
 SongManager.prototype.setInfoHash = function (infoHash) {
-    this.meta.infoHash = infoHash
+  this.meta.infoHash = infoHash
 }
 
 SongManager.prototype.getInfoHash = function () {
-    return this.meta.infoHash
+  return this.meta.infoHash
 }

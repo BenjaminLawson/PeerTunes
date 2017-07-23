@@ -1,3 +1,14 @@
+/*
+optionally pass data to route
+in room, check if host
+- if so, check that passed data exists & connect to lobby if exists
+- if not host, just connect to room
+
+use pushstate state?
+
+*/
+
+
 var localforage = require('localforage')
 var sodium = require('sodium-universal')
 var config = require('../config')
@@ -54,7 +65,6 @@ Router.prototype.render = function (hash, opts) {
   handleRoute(hash, opts)
 
   function handleRoute (route, opts) {
-    console.log('handle route ', route, opts)
     var parts = route.split('/')
     var path = parts[0]
     
@@ -69,32 +79,38 @@ Router.prototype.render = function (hash, opts) {
       '#lobby': function (opts) {
         // render lobby
         $('.page#lobby').show()
+        $('#btn-create-room').show()
+        
         var lobbyController = new LobbyController({router: self, identity: self.identity})
       },
       '#room': function (opts) {
         // must specify room id (host's public key)
         if (parts.length !== 2) {
+          console.log('missing room id param')
           self.redirect('#lobby')
           return
         }
 
         // render room
         $('.page#room').show()
+        $('#btn-room-listing').show()
 
-        // render buttons
+        // TODO: leave lobby
 
         // init room
-        config.lobby = opts.lobby
-        config.room = opts.room
-        config.roomPubkey = parts[1]
-        config.username = self.identity.username
-        config.keys = self.identity.keypair
-        var room = new Peertunes(config)
+        opts.roomPubkey = parts[1]
+        // TODO: just pass entire identity object
+        opts.username = self.identity.username
+        opts.keys = self.identity.keypair
+        opts.identity = self.identity
+        opts.router = self
+        var room = new Peertunes(opts)
       }
     }
 
     // hide all pages
     $('#main-content .page').hide()
+    $('.navbar-btn').hide()
 
     if (routes[path]) {
       routes[path](opts)

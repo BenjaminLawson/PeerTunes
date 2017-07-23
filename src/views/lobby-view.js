@@ -16,10 +16,9 @@ function LobbyView (opts) {
 }
 
 LobbyView.prototype.addRoom = function (room) {
-  var params = {id: room.creator, title: room.name, id: room.pubkey}
+  var params = {host: room.creator, title: room.name, id: room.pubkey}
   var $row = $(Mustache.render(this.roomRowTemplate, params))
   this.DOM.$roomList.append($row)
-  console.log('appended room ', $row)
 }
 
 LobbyView.prototype.removeRoom = function (roomId) {

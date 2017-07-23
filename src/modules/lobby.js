@@ -46,7 +46,6 @@ function P2PLobby (opts) {
     this.on('peer:connect', function (peer) {
         var mux = peer.mux
         
-        console.log('lobby peer:connect')
         var docStream = mux.createSharedStream('_doc')
         pump(docStream, self._doc.createStream(), docStream, function (err) {
             //console.log('lobby doc pipe closed', err)
@@ -63,7 +62,6 @@ function P2PLobby (opts) {
 inherits(P2PLobby, Room)
 
 P2PLobby.prototype.createRoom = function (name) {
-    console.log('createRoom')
     var self = this
 
     if (this.roomInterval != null) {
@@ -77,8 +75,7 @@ P2PLobby.prototype.createRoom = function (name) {
     // TODO: get keys
     
     var room = new HostedRoom({
-        hostKey: self.public,
-        isHost: true,
+        hostKey: self.public.toString('hex'),
         private: self.private,
         public: self.public,
         nicename: self.nicename
