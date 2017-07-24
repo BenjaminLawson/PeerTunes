@@ -86,7 +86,7 @@ function PeerTunes (opts) {
     queueItem: config.songQueue.queueItem
   })
 
-  this.queueModel.on('queue:change', function (q) {
+  this._onQueueModelChange = function (q) {
     if (!self.isInDJQueue()) {
       return
     }
@@ -105,7 +105,9 @@ function PeerTunes (opts) {
         self._djSeq.get('dj-'+self.id).set('song', front)
       }
     }
-  })
+  }
+
+  this.queueModel.on('queue:change', this._onQueueModelChange)
 
   this.moshpitModel = new MoshpitModel()
   this.moshpitView = new MoshpitView({selector: config.moshpit.selector})
@@ -125,12 +127,14 @@ function PeerTunes (opts) {
     }
   })
 
-  this.torrentClient.on('torrent', function (torrent) {
+  this._onTorrent = function (torrent) {
     console.log('[Torrent client] torrent ready: ', torrent)
-  })
-  this.torrentClient.on('error', function (err) {
+  }
+  this._onTorrentError = function (err) {
     console.log('[Torrent client] error: ', err)
-  })
+  }
+  this.torrentClient.on('torrent', this._onTorrent)
+  this.torrentClient.on('error', this._onTorrentError)
 
   this.username = opts.identity.username
   this.id = crypto.createHash('sha1').update(this.identity.keypair.public).digest('hex')
@@ -170,14 +174,47 @@ function PeerTunes (opts) {
   
 
   // cache jQuery selectors
+  this.$songSearchInput = $('#song-search-input')
+  this.$songSearchSubmitButton = $('#song-search-submit-button')
   this.$likeButton = $(config.selectors.likeButton)
   this.$dislikeButton = $(config.selectors.dislikeButton)
   this.$joinQueueButton = $(config.selectors.joinQueueButton)
   this.$volumeSlider = $(config.selectors.volumeSlider)
+  this.$volumeButton = $('#volume-button')
   this.$leaveButton = $(config.navBar.leaveButton)
+  this.$addSongButton = $('#add-song-button')
+  this.$roomListingButton = $('#btn-room-listing')
 
   // set up handlers
   this.initClickHandlers()
+}
+
+PeerTunes.prototype.destroy = function () {
+  // remove all jquery element event listeners
+  this.$songSearchInput.off()
+  this.$songSearchSubmitButton.off()
+  this.$likeButton.off()
+  this.$dislikeButton.off()
+  this.$joinQueueButton.off()
+  this.$volumeSlider.off()
+  this.$volumeButton.off()
+  this.$leaveButton.off()
+  this.$addSongButton.off()
+  this.$roomListingButton.off()
+
+  // remove all event listeners
+  this.queueModel.removeListener('queue:change', this._onQueueModelChange)
+  this.songManager.removeListener('song-end', this.onSongEnd)
+  this.torrentClient.removeListener('torrent', this._onTorrent)
+  this.torrentClient.removeListener('error', this._onTorrentError)
+
+  this.torrentClient.destroy()
+  this.player.destroy()
+  this.songManager.destroy()
+
+  this.chatController.destroy()
+  this.moshpitController.destroy()
+  this.queueController.destroy()
 }
 
 PeerTunes.prototype.initClickHandlers = function () {
@@ -186,7 +223,7 @@ PeerTunes.prototype.initClickHandlers = function () {
   // key listeners
   var ENTER_KEY = 13
 
-  $('#song-search-input').keydown(function (e) {
+  this.$songSearchInput.keydown(function (e) {
     if (e.keyCode === ENTER_KEY) {
       self.doSongSearch()
     }
@@ -197,13 +234,13 @@ PeerTunes.prototype.initClickHandlers = function () {
     self.player.setVolume(volume)
   })
 
-  $('#song-search-submit-button').click(function (e) {
+  this.$songSearchSubmitButton.click(function (e) {
     self.doSongSearch()
   })
 
   // TODO: breaks when switching between audio/video players
   // doesn't stay when switching from audio->video players
-  $('#volume-button').click(function (e) {
+  this.$volumeButton.click(function (e) {
     // if (!self.player) return
 
     // not muted
@@ -217,7 +254,7 @@ PeerTunes.prototype.initClickHandlers = function () {
     self.$volumeSlider.val(100)
   })
 
-  $('#add-song-button').click(function (e) {
+  this.$addSongButton.click(function (e) {
     $('#song-search-results').html('')
     $('#song-search-input').val('')
   })
@@ -261,6 +298,11 @@ PeerTunes.prototype.initClickHandlers = function () {
       self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: false})
     }
   })
+/*
+  this.$roomListingButton.click(function (e) {
+    self.leaveRoom()
+  })
+*/
 }
 
 PeerTunes.prototype._joinLobby = function () {

@@ -1,7 +1,5 @@
 module.exports = {
   trackerURL: 'wss://tracker.openwebtorrent.com',
-  username: null, // set by welcome view's username input
-  keys: {},
   chat: {
     messageTemplate: '#chatMessageTmpl',
     chatBody: '#chat .panel-body',

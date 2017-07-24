@@ -19,12 +19,17 @@ function QueueController (view, model, config) {
 
   this.queueItem = config.queueItem
 
-  var DOM = this.view.getDOM()
+  var DOM = this.view.DOM
 
-  this.model.on('add-song', this.view.appendSong.bind(this.view))
-  this.model.on('cycle', this.view.cycle.bind(this.view))
-  this.model.on('remove-song', this.view.removeSong.bind(this.view))
-  this.model.on('move-to-top', this.view.moveToTop.bind(this.view))
+  this._onAddSong = this.view.appendSong.bind(this.view)
+  this._onCycle = this.view.cycle.bind(this.view)
+  this._onRemoveSong = this.view.removeSong.bind(this.view)
+  this._onMoveToTop = this.view.moveToTop.bind(this.view)
+
+  this.model.on('add-song', this._onAddSong)
+  this.model.on('cycle', this._onCycle)
+  this.model.on('remove-song', this._onRemoveSong)
+  this.model.on('move-to-top', this._onMoveToTop)
 
   this.tagReader = new TagReader()
 
@@ -43,7 +48,8 @@ function QueueController (view, model, config) {
     self.model.moveToTop(index)
   })
 
-  dragDrop('#my-queue', function (files) {
+  // dragdrop returns its own remove function
+  this._dragDropRemove = dragDrop('#my-queue', function (files) {
     files.forEach(processFile)  
   })
 
@@ -88,8 +94,23 @@ function QueueController (view, model, config) {
   })
 }
 
+QueueController.prototype.destroy = function () {
+  this._dragDropRemove()
+
+  this.model.removeListener('add-song', this._onAddSong)
+  this.model.removeListener('cycle', this._onCycle)
+  this.model.removeListener('remove-song', this._onRemoveSong)
+  this.model.removeListener('move-to-top', this._onMoveToTop)
+
+  var DOM = this.view.DOM
+
+  DOM.$songQueue.sortable('destroy')
+  DOM.$songQueue.empty() // remove all children & their event listeners
+  
+}
+
 QueueController.prototype._calculateInfoHash = function (file, cb) {
-  console.log('calc infiHash of file ', file)
+  console.log('calc infoHash of file ', file)
   createTorrent(file, function (err, torrent) {
     var parsed = parseTorrent(torrent)
     cb(parsed.infoHash, err)

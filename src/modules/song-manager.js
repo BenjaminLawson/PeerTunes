@@ -22,6 +22,13 @@ function SongManager () {
 
 inherits(SongManager, EventEmitter)
 
+SongManager.prototype.destroy = function () {
+  if (this.updater) clearInterval(this.updater)
+  if (this.timeout) clearTimeout(this.timeout)
+  this.meta = null
+  this.playing = false
+}
+
 // end must be called before play
 SongManager.prototype.play = function (meta) {
   var self = this

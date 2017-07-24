@@ -24,18 +24,25 @@ function Router () {
   console.log('init Router')
 
   this.identity = null
+
+  this.previousPage = null
   
   self.render(decodeURI(window.location.hash))
-  
+
+  /*
   $(window).bind('popstate', function (e) {
     console.log('popstate ', e)
+    self.render(decodeURI(window.location.hash))
+    })
+  */
+  $(window).on('hashchange', function() {
     self.render(decodeURI(window.location.hash))
   })
 }
 
 Router.prototype.route = function (path, opts) {
   console.log('Router: route ', path, opts)
-  history.pushState(null, null, path)
+  //history.pushState(null, null, path)
   this.render(path, opts)
 }
 
@@ -55,7 +62,7 @@ Router.prototype.render = function (hash, opts) {
       }
       else {
         self.identity = identity
-        
+          
         handleRoute(hash, opts)
       }
     })
@@ -67,6 +74,15 @@ Router.prototype.render = function (hash, opts) {
   function handleRoute (route, opts) {
     var parts = route.split('/')
     var path = parts[0]
+
+    if (self.previousPage) {
+      console.log('Router: previous page exists, destroying')
+      self.previousPage.destroy()
+      self.previousPage = null
+    }
+    else {
+      console.log('Router: no previous page exists')
+    }
     
     
     var routes = {
@@ -82,6 +98,7 @@ Router.prototype.render = function (hash, opts) {
         $('#btn-create-room').show()
         
         var lobbyController = new LobbyController({router: self, identity: self.identity})
+        self.previousPage = lobbyController
       },
       '#room': function (opts) {
         // must specify room id (host's public key)
@@ -99,12 +116,13 @@ Router.prototype.render = function (hash, opts) {
 
         // init room
         opts.roomPubkey = parts[1]
-        // TODO: just pass entire identity object
+
         opts.username = self.identity.username
         opts.keys = self.identity.keypair
         opts.identity = self.identity
         opts.router = self
         var room = new Peertunes(opts)
+        self.previousPage = room
       }
     }
 

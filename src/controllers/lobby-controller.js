@@ -16,20 +16,43 @@ function LobbyController(opts) {
     roomList: '#room-list'
   })
 
-  this._initClickHandlers()
-
+  this._onLobbyAddRoom = function (room) {
+    console.log('new room added to lobby: ', room)
+    self.view.addRoom(room)
+  }
+  
   this.lobby = this._joinLobby()
+  this.lobby.on('rooms:add', this._onLobbyAddRoom)
+
+  this.$createRoomButton = $('#btn-create-room')
+  this.$modalCreateRoomButton = $('#modal-btn-create-room')
+  this.$roomList = $('#room-list')
+
+  this._initClickHandlers()
+}
+
+LobbyController.prototype.destroy = function () {
+  this.$createRoomButton.off()
+  this.$modalCreateRoomButton.off()
+  
+  this.$roomList.empty()
+
+  this.lobby.removeListener('rooms:add', this._onLobbyAddRoom)
+  this.lobby.destroy()
+  this.lobby = null
+  
 }
 
 LobbyController.prototype._initClickHandlers = function () {
   var self = this
   // create room
-  $('#btn-create-room').click(function (e) {
-     $('#createRoomModal').modal('toggle')
+  this.$createRoomButton.click(function (e) {
+     $('#createRoomModal').modal('show')
   })
 
   // modal create room
-  $('#modal-btn-create-room').click(function (e) {
+  this.$modalCreateRoomButton.click(function (e) {
+    console.log('room name val: ', $('#roomNameInput').val())
     if ($('#roomNameInput').val().length < 1) {
       e.stopPropagation()
       $('#create-room-form-group').addClass('has-error')
@@ -39,15 +62,17 @@ LobbyController.prototype._initClickHandlers = function () {
     
     var roomName = $('#roomNameInput').val()
     
-    //var room = self.lobby.createRoom(roomName)
-
-    //window.location.hash = '#room/'+self.keypair.public.toString('hex')
-    self.lobby.leave()
-    self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {room: {name: roomName}})
-    console.log('created room ', roomName)
-    
     $('#roomNameInput').val('')
+    self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {room: {name: roomName}})
   })
+
+  // click on a room listing
+  this.$roomList.on('click', '.room-list-item', function (e) {
+    // room guests cna leave lobby since they don't need to keep room listing alive
+    self.lobby.leave()
+    self.lobby = null
+  })
+  
 }
 
 LobbyController.prototype._joinLobby = function () {
@@ -60,11 +85,6 @@ LobbyController.prototype._joinLobby = function () {
     public: self.identity.keypair.public,
     private: self.identity.keypair.private,
     nicename: self.identity.username
-  })
-
-  lobby.on('rooms:add', function (room) {
-    console.log('new room added to lobby: ', room)
-    self.view.addRoom(room)
   })
 
   return lobby

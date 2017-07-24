@@ -22,14 +22,20 @@ function ChatController (view, model) {
   // key listeners
   var ENTER_KEY = 13
 
-  this.DOM.$chatInput.keydown(function (e) {
+  this._onKeydown = function (e) {
     if (e.keyCode === ENTER_KEY) {
       self._submitMessage()
     }
-  })
+  }
+  
+  this.DOM.$chatInput.on('keydown', this._onKeydown)
 }
 
 inherits(ChatController, EventEmitter)
+
+ChatController.prototype.destroy = function () {
+  this.DOM.$chatInput.off('keydown', this._onKeydown)
+}
 
 ChatController.prototype._submitMessage = function () {
   var text = this.DOM.$chatInput.val()

@@ -25,7 +25,6 @@ module.exports = (function () {
     }
     var apiQuery = baseURL + 'videos?' + queryString.stringify(query)
     $.getJSON(apiQuery, function (result) {
-      console.log('Batch video meta result: ', result)
       var videos = result.items.map(function (item) {
         return {
           title: item.snippet.title,

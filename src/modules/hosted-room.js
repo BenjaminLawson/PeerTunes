@@ -37,15 +37,27 @@ function HostedRoom (opts) {
   this._doc = new Doc()
   this._heartbeats = this._doc.createSet('type', 'heartbeat')
 
-  this._heartbeats.on('add', function (row) {
+  this._onHeartbeatAdd = function (row) {
     console.log('heartbeat add: ', row.toJSON())
     self.emit('user:join', row.toJSON())
-  })
+  }
 
-  this._heartbeats.on('remove', function (row) {
+  this._onHeartbeatRemove = function (row) {
     console.log('heartbeat remove: ', row.toJSON())
     self.emit('user:leave', row.toJSON())
-  })
+  }
+
+  this._onPeerConnect = function (peer) {
+    var mux = peer.mux
+    
+    var crdtStream = mux.createSharedStream('_crdt') // name unlikely to be used downstream
+    pump(crdtStream, self._doc.createStream(), crdtStream, function (err) {
+      //console.log('hosted-room crdt pipe closed', err)
+    })
+  }
+
+  this._heartbeats.on('add', this._onHeartbeatAdd)
+  this._heartbeats.on('remove', this._onHeartbeatRemove)
 
   this._myHeartbeat = this._doc.add({id: self.id, type: 'heartbeat', time: Date.now(), nicename: self.nicename})
 
@@ -54,14 +66,7 @@ function HostedRoom (opts) {
     self._myHeartbeat.set('time', Date.now())
   }, HEARTBEAT_INTERVAL)
   
-  this.on('peer:connect', function (peer) {
-    var mux = peer.mux
-    
-    var crdtStream = mux.createSharedStream('_crdt') // name unlikely to be used downstream
-    pump(crdtStream, self._doc.createStream(), crdtStream, function (err) {
-      //console.log('hosted-room crdt pipe closed', err)
-    })
-  })
+  this.on('peer:connect', this._onPeerConnect)
 
   if (this.isHost) {
     this._initReaper()
@@ -70,18 +75,11 @@ function HostedRoom (opts) {
 
 inherits(HostedRoom, Room)
 
-// return array of ids of heartbeats
-HostedRoom.prototype.users = function () {
-  return this._heartbeats.asArray()
-}
-
 HostedRoom.prototype.destroy = function () {
-  this.leave()
-}
-
-HostedRoom.prototype.leave = function () {
-  // clean up room first
-  Room.prototype.leave.call(this)
+  // remove event listeners
+  this.removeListener('peer:connect', this._onPeerConnect)
+  this._heartbeats.removeListener('add', this._onHeartbeatAdd)
+  this._heartbeats.removeListener('remove', this._onHeartbeatRemove)
   
   // remove heartbeat
   clearInterval(this._heartbeatInterval)
@@ -92,7 +90,19 @@ HostedRoom.prototype.leave = function () {
   if (this._reaperInterval) clearInterval(this._reaperInterval)
 
   this.isHost = false
-  
+
+   // destroy base room last
+  Room.prototype.destroy.call(this)
+}
+
+// return array of ids of heartbeats
+HostedRoom.prototype.users = function () {
+  return this._heartbeats.asArray()
+}
+
+HostedRoom.prototype.leave = function () {
+  console.log('leaving hosted room')
+  this.destroy()
 }
 
 // scans heartbeats for expired peers periodically

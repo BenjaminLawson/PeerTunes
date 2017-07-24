@@ -39,6 +39,7 @@ TagReader.prototype.tagsFromFile = function (file, callback) {
       },
       onError: function(error) {
         console.log('Error reading MP3 tags: ', error)
+        // TODO: call callback with error
       }
     })
 }

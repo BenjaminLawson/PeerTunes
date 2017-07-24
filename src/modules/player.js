@@ -52,6 +52,9 @@ function Player (config) {
   */
   this.currentlyPlaying = null
 
+  this._onPlayerEnded = null
+  this._onPlayerPlay = null
+  this._onPlayerTimeUpdate = null
   
   this.players.forEach(function (player) {
     player.ready(function () {
@@ -78,6 +81,21 @@ function Player (config) {
   })
 }
 
+Player.prototype.destroy = function () {
+  // ensure player paused/reset properly, remove current torrent
+  this.end()
+  
+  this.players.forEach(function (p) {
+    // remove all event listeners (is this the correct way?)
+    p.off()
+    // videojs method that destroys and cleans up player
+    p.dispose()
+  })
+
+  this.currentTorrent = null
+  this.torrentClient = null
+}
+
 
 // time in milliseconds
 Player.prototype.play = function (data, time, isDJ) {
@@ -102,7 +120,7 @@ Player.prototype.play = function (data, time, isDJ) {
     this.playMp3(data, time, isDJ)
     break
   default:
-    console.log("Can't play unknown media type ", source)
+    console.error("Error: Can't play unknown source type ", data.source)
   }
 }
 
@@ -117,16 +135,12 @@ Player.prototype.end = function () {
   this.$songCurrentTime.text('00:00')
   this.updateProgress(0)
 
-  if (this.currentTorrent) {
+  if (this.currentTorrent && this.currentTorrent) {
     this.torrentClient.remove(this.currentTorrent.infoHash)
     this.currentTorrent = null
   }
 }
 
-/**
- * play an mp3 file
- * @param {bool} local - if the mp3 is in localstorage
- */
 Player.prototype.playMp3 = function (meta, time, isDJ) {
   var self = this
 

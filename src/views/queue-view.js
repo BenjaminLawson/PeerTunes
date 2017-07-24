@@ -35,10 +35,6 @@ function QueueView (model, config) {
 
 inherits(QueueView, EventEmitter)
 
-QueueView.prototype.getDOM = function () {
-  return this.DOM
-}
-
 QueueView.prototype.render = function () {
   var self = this
 
