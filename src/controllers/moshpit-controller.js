@@ -20,6 +20,8 @@ MoshpitController.prototype.destroy = function () {
   this.model.removeListener('avatar:add', this._onAvatarAdd)
   this.model.removeListener('avatar:remove', this._onAvatarRemove)
   this.model.removeListener('avatar:headbob', this._onAvatarHeadbob)
+
+  this.view.destroy()
 }
 
 

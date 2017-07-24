@@ -14,8 +14,8 @@ function MoshpitView (config) {
   Mustache.parse(this.avatarTemplate)
 }
 
-MoshpitView.prototype.getDOM = function () {
-  return this.DOM
+MoshpitView.prototype.destroy = function () {
+  this.DOM.$moshpit.empty()
 }
 
 MoshpitView.prototype.addAvatar = function (user) {

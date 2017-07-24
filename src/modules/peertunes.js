@@ -46,11 +46,9 @@ function PeerTunes (opts) {
   var isHost = (opts.identity.keypair.public.toString('hex') === opts.roomPubkey)
 
   if (isHost && !opts.room) {
-    console.log('user is host, but is missing room parameters')
+    console.error('user is host, but is missing room parameters')
     return
   } 
-  
-  console.log(config)
 
   if (!Peer.WEBRTC_SUPPORT) {
     window.alert('This browser is unsupported. Please use a browser with WebRTC support.')
@@ -183,13 +181,14 @@ function PeerTunes (opts) {
   this.$volumeButton = $('#volume-button')
   this.$leaveButton = $(config.navBar.leaveButton)
   this.$addSongButton = $('#add-song-button')
-  this.$roomListingButton = $('#btn-room-listing')
 
   // set up handlers
   this.initClickHandlers()
 }
 
 PeerTunes.prototype.destroy = function () {
+  this.leaveRoom()
+  
   // remove all jquery element event listeners
   this.$songSearchInput.off()
   this.$songSearchSubmitButton.off()
@@ -200,7 +199,6 @@ PeerTunes.prototype.destroy = function () {
   this.$volumeButton.off()
   this.$leaveButton.off()
   this.$addSongButton.off()
-  this.$roomListingButton.off()
 
   // remove all event listeners
   this.queueModel.removeListener('queue:change', this._onQueueModelChange)
@@ -215,6 +213,10 @@ PeerTunes.prototype.destroy = function () {
   this.chatController.destroy()
   this.moshpitController.destroy()
   this.queueController.destroy()
+
+  // TODO: clean up torrents
+
+  // TODO: leave room gracefully (so peers can know right away)
 }
 
 PeerTunes.prototype.initClickHandlers = function () {
@@ -298,11 +300,6 @@ PeerTunes.prototype.initClickHandlers = function () {
       self._doc.set('mood-'+self.id, {type: 'mood', userId: self.id, like: false})
     }
   })
-/*
-  this.$roomListingButton.click(function (e) {
-    self.leaveRoom()
-  })
-*/
 }
 
 PeerTunes.prototype._joinLobby = function () {
@@ -518,6 +515,7 @@ PeerTunes.prototype.leaveRoom = function () {
   this.closeStreams()
 
   // resets room elements (chat, moshpit, etc)
+  // TODO: remove and let specialized destroy methods do it
   this.resetRoom()
 }
 

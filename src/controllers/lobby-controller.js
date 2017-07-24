@@ -37,6 +37,7 @@ LobbyController.prototype.destroy = function () {
   
   this.$roomList.empty()
 
+  console.log('lobby controller destroy, lobby: ', this.lobby)
   this.lobby.removeListener('rooms:add', this._onLobbyAddRoom)
   this.lobby.destroy()
   this.lobby = null
@@ -67,11 +68,13 @@ LobbyController.prototype._initClickHandlers = function () {
   })
 
   // click on a room listing
+  /*
   this.$roomList.on('click', '.room-list-item', function (e) {
     // room guests cna leave lobby since they don't need to keep room listing alive
     self.lobby.leave()
     self.lobby = null
   })
+*/
   
 }
 

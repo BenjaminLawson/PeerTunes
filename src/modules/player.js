@@ -89,7 +89,8 @@ Player.prototype.destroy = function () {
     // remove all event listeners (is this the correct way?)
     p.off()
     // videojs method that destroys and cleans up player
-    p.dispose()
+    // unfortunately destroys the DOM element too
+    //p.dispose()
   })
 
   this.currentTorrent = null

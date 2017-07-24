@@ -29,20 +29,22 @@ function Router () {
   
   self.render(decodeURI(window.location.hash))
 
-  /*
+  
   $(window).bind('popstate', function (e) {
-    console.log('popstate ', e)
+    console.log('Router: popstate ', e)
     self.render(decodeURI(window.location.hash))
-    })
-  */
+  })
+  /*
   $(window).on('hashchange', function() {
     self.render(decodeURI(window.location.hash))
   })
+*/
 }
 
 Router.prototype.route = function (path, opts) {
   console.log('Router: route ', path, opts)
-  //history.pushState(null, null, path)
+  history.pushState(null, null, path)
+  //window.location.hash = path
   this.render(path, opts)
 }
 
