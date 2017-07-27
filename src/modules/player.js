@@ -2,8 +2,7 @@
 /* Globals */
 //var $, moment, videojs
 
-// TODO: 'strategy' modules that handle a content type
-// TODO: clean up torrents after layed
+// TODO: 'strategy' modules that handle a source type
 
 // modules
 var TagReader = require('../lib/tag-reader')

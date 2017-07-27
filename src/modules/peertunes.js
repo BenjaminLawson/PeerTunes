@@ -56,6 +56,7 @@ function PeerTunes (opts) {
   }
 
   this.config = config // TODO: use defaults if not provided
+  this.router = opts.router
 
   this.identity = opts.identity
   this.keys = this.identity.keypair
@@ -160,6 +161,11 @@ function PeerTunes (opts) {
    // lobby set up
   this.room = null
   this.lobby = null
+
+  this._onHostLeave = function () {
+    // automatically destroys this room
+    self.router.route('#lobby')
+  }
  
   if (isHost) {
     this.lobby = self._joinLobby()
@@ -168,6 +174,7 @@ function PeerTunes (opts) {
   }
   else {
     this.room = self.joinRoom(opts.roomPubkey)
+    this.room.on('host:leave', this._onHostLeave)
   }
   
 
@@ -187,7 +194,21 @@ function PeerTunes (opts) {
 }
 
 PeerTunes.prototype.destroy = function () {
-  this.leaveRoom()
+  console.log('destroying room')
+  // TODO: leave room gracefully (so peers can know right away)
+
+  
+  if (this.isInDJQueue()) {
+    this.leaveDJQueue()
+  } 
+  
+  this.songManager.end()
+  this.closeStreams()
+
+  if (this.room) {
+    this.room.destroy()
+    this.room = null
+  }
   
   // remove all jquery element event listeners
   this.$songSearchInput.off()
@@ -214,9 +235,19 @@ PeerTunes.prototype.destroy = function () {
   this.moshpitController.destroy()
   this.queueController.destroy()
 
-  // TODO: clean up torrents
+  // clean up torrents
+  // destroying webtorrent client already calls destroy on each torrent
+  this.activeTorrents = []
 
-  // TODO: leave room gracefully (so peers can know right away)
+  this._doc = null
+  this._chatSet = null
+  this._djSeq - null
+
+  this.router = null
+
+  // resets room elements (chat, moshpit, etc)
+  // TODO: remove and let specialized destroy methods do it
+  this.resetRoom()
 }
 
 PeerTunes.prototype.initClickHandlers = function () {
@@ -489,34 +520,6 @@ PeerTunes.prototype.initReplicationModels = function (room) {
     row = row.toJSON()
     self.moshpitModel.setHeadbobbing(row.userId, row.like)
   })
-}
-
-PeerTunes.prototype.leaveRoom = function () {
-  var self = this
-
-  console.log('leaving room')
-  
-  if (!this.room) return
-
-  if (this.isInDJQueue()) {
-    this.leaveDJQueue()
-  } 
-
-  // cleans up peers and trackers
-  self.room.leave()
-  self.room = null
-
-  this._doc = null
-  this._chatSet = null
-  this._djSeq - null
-
-  this.songManager.end()
-
-  this.closeStreams()
-
-  // resets room elements (chat, moshpit, etc)
-  // TODO: remove and let specialized destroy methods do it
-  this.resetRoom()
 }
 
 PeerTunes.prototype.resetRoom = function () {

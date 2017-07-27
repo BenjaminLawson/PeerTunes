@@ -7,7 +7,7 @@ module.exports = (function () {
   
   var config = {
     apiKey: 'AIzaSyCw4x0rg8P-R-7ecZzc57Il8ZqTJc_ybNY', // YouTube data api key
-    maxResults: 35
+    maxResults: 35 // arbitrary
   }
 
   var baseURL = 'https://www.googleapis.com/youtube/v3/'

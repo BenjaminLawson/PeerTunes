@@ -1,7 +1,7 @@
 /*
   TODO:
-  - expire heartbeats that aren't updated for a while (fork crdt? inherit?)
   - security: sign updates to rows, only owner of key can update that row
+  - if NOT host, detect when host removes heartbeat or heartbeat times out
 */
 module.exports = HostedRoom
 
@@ -11,9 +11,10 @@ var Room = require('./room')
 var crypto = require('crypto-browserify')
 var pump = require('pump')
 
-var HEARTBEAT_INTERVAL = 30000
-var REAPER_INTERVAL = 40000
-var EXPIRATION_TIME =  40000
+var HEARTBEAT_INTERVAL = 30000 // time between updating heartbeat, must be less than expiration time by decent margin
+var REAPER_INTERVAL = 40000 // time between reapings by host
+var EXPIRATION_TIME =  40000 // heartbeat age before user considered dead
+var HOST_CHECK_INTERVAL = 20000 // time between guests checking that host is alive
 
 function HostedRoom (opts) {
   var self = this
@@ -25,6 +26,8 @@ function HostedRoom (opts) {
   this.hostKey = opts.hostKey || null
   if (typeof this.hostKey === 'string') this.hostKey = new Buffer(this.hostKey, 'hex')
   //console.log('converted to hostKey ', this.hostKey)
+  this.hostId = crypto.createHash('sha1').update(this.hostKey).digest('hex')
+  console.log('hosted room hostId: ', this.hostId)
   
   this.nicename = opts.nicename
   
@@ -43,8 +46,13 @@ function HostedRoom (opts) {
   }
 
   this._onHeartbeatRemove = function (row) {
-    console.log('heartbeat remove: ', row.toJSON())
-    self.emit('user:leave', row.toJSON())
+    row = row.toJSON()
+    console.log('heartbeat remove: ', row)
+    self.emit('user:leave', row)
+    if (!self.isHost && row.id === self.hostId) {
+      console.log('host left room')
+      self.emit('host:leave')
+    }
   }
 
   this._onPeerConnect = function (peer) {
@@ -68,14 +76,22 @@ function HostedRoom (opts) {
   
   this.on('peer:connect', this._onPeerConnect)
 
+  this._reaperInterval = null
+  this._hostHeartbeatCheckInterval = null
   if (this.isHost) {
     this._initReaper()
+  }
+  else {
+    this._initHostHeartbeatChecker()
   }
 }
 
 inherits(HostedRoom, Room)
 
 HostedRoom.prototype.destroy = function () {
+  // remove self from room doc
+  this._doc.rm(this.id)
+  
   // remove event listeners
   this.removeListener('peer:connect', this._onPeerConnect)
   this._heartbeats.removeListener('add', this._onHeartbeatAdd)
@@ -84,12 +100,8 @@ HostedRoom.prototype.destroy = function () {
   // remove heartbeat
   clearInterval(this._heartbeatInterval)
 
-  // TODO: not triggering _heartbeats remove?
-  this._doc.rm(this.id)
-
   if (this._reaperInterval) clearInterval(this._reaperInterval)
-
-  this.isHost = false
+  if (this._hostHeartbeatCheckInterval) clearInterval(this._hostHeartbeatCheckInterval)
 
    // destroy base room last
   Room.prototype.destroy.call(this)
@@ -120,6 +132,22 @@ HostedRoom.prototype._initReaper = function () {
         console.log('reaping: ', row.id)
         self._doc.rm(row.id)
       }
+    }
+  }
+}
+
+// in case the host disconnects sloppily (e.g. closes browser window)
+// check for heartbeat periodically
+HostedRoom.prototype._initHostHeartbeatChecker = function () {
+  var self = this
+
+  this._hostHeartbeatCheckInterval = setInterval(check, HOST_CHECK_INTERVAL)
+
+  function check () {
+    var row = self._heartbeats.get(self.hostId)
+    if (!row || Date.now() - row.get('time') > EXPIRATION_TIME) {
+      console.log('host heartbeat expired')
+      self.emit('host:leave')
     }
   }
 }

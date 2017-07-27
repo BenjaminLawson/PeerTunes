@@ -3,6 +3,7 @@ var EventEmitter = require('events').EventEmitter
 var inherits = require('util').inherits
 var crypto = require('crypto-browserify')
 var multiplex = require('multiplex')
+var pump = require('pump')
 
 module.exports = Room
 
@@ -41,6 +42,7 @@ Room.prototype.destroy = function () {
   var self = this
   Object.keys(this.peers).forEach(function (key, index) {
     var peer = self.peers[key]
+    if (peer.mux) peer.mux.destroy()
     peer.destroy()
     delete self.peers[key]
   })
@@ -134,12 +136,17 @@ Room.prototype._trackerInit = function (opts) {
       peer.mux = mux
 
       mux.on('error', function (err) {
+        // EOF error is seemingly harmless :S
+        // https://github.com/maxogden/websocket-stream/issues/58
         console.log('multiplex error: ', err)
       })
+      
 
-      // TODO: don't emit if peer will be destroyed because it is furthest
-      peer.pipe(mux).pipe(peer)
+      pump(peer, mux, peer, function (err) {
+        //console.log('room peer mux pipe finsihed ', err)
+      })
       //console.log('emitting peer:connect')
+      // TODO: don't emit if peer will be destroyed because it is furthest
       self.emit('peer:connect', peer)
       
       if (Object.keys(self.peers).length > self.maxPeers) {
