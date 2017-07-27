@@ -51,23 +51,39 @@
   <div id="moshpit" class="center-block hidden-sm hidden-xs"></div>
 
   <div id="sidebar-right" class="sidebar">
-    <div id="chat" class="panel panel-default">
-      <div class="panel-heading">
-        <h3 class="panel-title">Chat</h3>
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+      <li role="presentation" class="active"><a href="#chat-panel" role="tab" data-toggle="tab">Chat</a></li>
+      <li role="presentation"><a href="#dj-queue-panel" aria-controls="profile" role="tab" data-toggle="tab">DJ Queue</a></li>
+    </ul>
+
+    <!-- Tab panes -->
+    <div class="tab-content">
+      <div role="tabpanel" class="tab-pane active" id="chat-panel">
+        <div id="chat" class="panel panel-default">
+          <div class="panel-body no-padding">
+            <ul id="chat-list" class="list-group">
+            </ul>
+          </div>
+          <div class="panel-footer">
+            <div class="input-group">
+	      <input type="text" id="chat-text" class="form-control" placeholder="Enter message here...">
+	      <span class="input-group-btn">
+	        <button id="chat-enter" class="btn btn-default" type="button">Enter</button>
+	      </span>
+            </div>
+          </div>
+        </div>  
       </div>
-      <div class="panel-body no-padding">
-        <ul id="chat-list" class="list-group">
-        </ul>
-      </div>
-      <div class="panel-footer">
-        <div class="input-group">
-	  <input type="text" id="chat-text" class="form-control" placeholder="Enter message here...">
-	  <span class="input-group-btn">
-	    <button id="chat-enter" class="btn btn-default" type="button">Enter</button>
-	  </span>
+      <div role="tabpanel" class="tab-pane" id="dj-queue-panel">
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <ul id="dj-queue-list" class="list-group">
+            </ul>
+          </div>
         </div>
       </div>
-    </div>  
+    </div>
   </div>
 
   <% include ../partials/bottomBar %>

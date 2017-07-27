@@ -145,7 +145,7 @@ Room.prototype._trackerInit = function (opts) {
       pump(peer, mux, peer, function (err) {
         //console.log('room peer mux pipe finsihed ', err)
       })
-      //console.log('emitting peer:connect')
+
       // TODO: don't emit if peer will be destroyed because it is furthest
       self.emit('peer:connect', peer)
       

@@ -461,6 +461,7 @@ PeerTunes.prototype.initReplicationModels = function (room) {
 
   this._currentSong.on('update', function (data) {
     console.log('current song update', data)
+    
     if (data == null || !data.song) {
       console.log('current song set to null, ending')
       self.songManager.end()
@@ -489,7 +490,18 @@ PeerTunes.prototype.initReplicationModels = function (room) {
     }
   })
 
-  console.log(room)
+
+  self._djSeq.on('changes', function (row, changed) {
+    console.log('dj seq row changed')
+    console.log(self._djSeq)
+    self.renderDJQueue()
+  })
+
+  // TODO: if host is first DJ, guest doesn't detect new row
+  self._djSeq.on('remove', function () { self.renderDJQueue() })
+  self._djSeq.on('add', function () { self.renderDJQueue() })
+  self._djSeq.on('changes', function () { self.renderDJQueue() })
+  
   if (room.isHost) {
     
     self._djSeq.on('add', function (row) {
@@ -520,6 +532,17 @@ PeerTunes.prototype.initReplicationModels = function (room) {
     row = row.toJSON()
     self.moshpitModel.setHeadbobbing(row.userId, row.like)
   })
+}
+
+PeerTunes.prototype.renderDJQueue = function () {
+  console.log('render dj queue')
+  var $list = $('#dj-queue-list')
+  $list.empty()
+
+  this._djSeq.asArray().forEach(function (row) {
+    $list.append('<li class="list-group-item">' + row.get('username') + '</li>')
+  })
+  $list.find('li').first().addClass('active')
 }
 
 PeerTunes.prototype.resetRoom = function () {

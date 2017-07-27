@@ -46,6 +46,10 @@ body {
   overflow-y: scroll;
 }
 
+.nav-tabs {
+  background-color: #3c3c3c;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }
