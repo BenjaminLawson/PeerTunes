@@ -18,7 +18,8 @@ TODO: dj queue view
 TODO: use revokeObjectURL to free up memory
 https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL
 
-TODO: convert all times to same timezone
+// TODO: host should be master clock if peers disagree
+// TODO: test date.now variance on different computers, maybe use current time of song instead of start time
 
 TODO: private rooms (host doesn't post to lobby & just leaves lobby when creating room)
 - need to implement public key url hash first

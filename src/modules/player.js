@@ -51,6 +51,8 @@ function Player (config) {
   */
   this.currentlyPlaying = null
 
+  this._fileURL = null
+
   this._onPlayerEnded = null
   this._onPlayerPlay = null
   this._onPlayerTimeUpdate = null
@@ -94,6 +96,9 @@ Player.prototype.destroy = function () {
 
   this.currentTorrent = null
   this.torrentClient = null
+
+  // free memory used by mp3 file
+  if (this._fileURL) window.URL.revokeObjectURL(this._fileURL)
 }
 
 
@@ -205,12 +210,12 @@ Player.prototype.playMp3 = function (meta, time, isDJ) {
     localforage.getItem(meta.id).then(function (value) {
       var file = new File([value], meta.id, {type: 'audio/mp3', lastModified: Date.now()})
 
-      //TODO: revoke object url
-      var url = window.URL.createObjectURL(file)
+      // free memory used by object
+      if (self._fileURL) window.URL.revokeObjectURL(self._fileURL)
+      
+      self._fileURL = window.URL.createObjectURL(file)
 
-      //console.log('file: ', file)
-      //console.log('file url: ', url)
-      self.player.src({ type: 'audio/mp3', src: url })
+      self.player.src({ type: 'audio/mp3', src: self._fileURL })
       self.player.currentTime(time / 1000) // milliseconds -> seconds
       self.player.play()
 

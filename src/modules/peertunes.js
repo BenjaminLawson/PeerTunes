@@ -1,6 +1,3 @@
-// TODO: refactor host-only code to its own init function
-// TODO: replace rooms modal with view covering screen
-
 // Globals
 //var $, emojione
 
@@ -39,7 +36,6 @@ var MoshpitController = require('../controllers/moshpit-controller')
 var MoshpitView = require('../views/moshpit-view')
 var MoshpitModel = require('../models/moshpit-model')
 
-// TODO: add element selectors to config
 function PeerTunes (opts) {
   var self = this
 
@@ -183,6 +179,7 @@ function PeerTunes (opts) {
   
 
   // cache jQuery selectors
+  // TODO: add element selectors to config
   this.$songSearchInput = $('#song-search-input')
   this.$songSearchSubmitButton = $('#song-search-submit-button')
   this.$likeButton = $(config.selectors.likeButton)
@@ -200,8 +197,6 @@ function PeerTunes (opts) {
 
 PeerTunes.prototype.destroy = function () {
   console.log('destroying room')
-  // TODO: leave room gracefully (so peers can know right away)
-
   
   if (this.isInDJQueue()) {
     this.leaveDJQueue()
@@ -413,10 +408,6 @@ PeerTunes.prototype.closeStreams = function () {
 // joins p2p replicated data structures for room
 PeerTunes.prototype.joinDocForRoom = function (room) {
   var self = this
-
-  console.log('=== join doc for room ====')
-  // TODO: remove
-  setInterval(function () {console.log('djSeq: ', self._doc)}, 3000)
   
   this.initReplicationModels(room)
 
@@ -452,7 +443,7 @@ PeerTunes.prototype.initReplicationModels = function (room) {
   this._doc = new Doc()
   console.log('_doc: ', this._doc)
   this._currentSong = new Value()
-  this._chatSeq = this._doc.createSeq('type', 'chat') // TODO: make set
+  this._chatSeq = this._doc.createSeq('type', 'chat') // TODO: make set?
   this._moodSet = this._doc.createSet('type', 'mood')
   this._djSeq = this._doc.createSeq('type', 'djQueue') // dj queue, {id, username, song}
 
@@ -462,7 +453,7 @@ PeerTunes.prototype.initReplicationModels = function (room) {
   })
 
   this.chatController.on('chat:submit', function (msg) {
-    // TODO: use seq correctly and push to seq
+    // TODO: use seq correctly and push to seq, or keep abusing the fact that sets happen to stay in order anyway...
     self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
   })
 
