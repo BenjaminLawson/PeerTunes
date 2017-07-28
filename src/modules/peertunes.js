@@ -94,14 +94,18 @@ function PeerTunes (opts) {
     // TODO: leave dj queue if queue becomes empty?
     // only set new value if top song actually changed
     var front = q[0]
+    // NOTE: crdt bug? set(key, value) reassigns row to object containing only the key specified! (other keys removed)
+    // https://github.com/dominictarr/crdt/blob/master/row.js#L24
     if (front && (front.id !== row.song.id || front.source !== row.song.source)) {
+      row.song = front
+      var r = self._djSeq.get('dj-'+self.id)
       if (front.source === 'MP3') {
         self.seedFileWithKey(front.id, function (torrent) {
-          self._djSeq.get('dj-'+self.id).set('song', front)
+          r.set(row)
         })
       }
       else {
-        self._djSeq.get('dj-'+self.id).set('song', front)
+        r.set(row)
       }
     }
   }
@@ -188,6 +192,7 @@ function PeerTunes (opts) {
   this.$volumeButton = $('#volume-button')
   this.$leaveButton = $(config.navBar.leaveButton)
   this.$addSongButton = $('#add-song-button')
+  this.$DJQueueList = $('#dj-queue-list')
 
   // set up handlers
   this.initClickHandlers()
@@ -408,6 +413,10 @@ PeerTunes.prototype.closeStreams = function () {
 // joins p2p replicated data structures for room
 PeerTunes.prototype.joinDocForRoom = function (room) {
   var self = this
+
+  console.log('=== join doc for room ====')
+  // TODO: remove
+  setInterval(function () {console.log('djSeq: ', self._doc)}, 3000)
   
   this.initReplicationModels(room)
 
@@ -443,8 +452,9 @@ PeerTunes.prototype.initReplicationModels = function (room) {
   this._doc = new Doc()
   console.log('_doc: ', this._doc)
   this._currentSong = new Value()
-  this._chatSeq = this._doc.createSeq('type', 'chat')
+  this._chatSeq = this._doc.createSeq('type', 'chat') // TODO: make set
   this._moodSet = this._doc.createSet('type', 'mood')
+  this._djSeq = this._doc.createSeq('type', 'djQueue') // dj queue, {id, username, song}
 
   this._chatSeq.on('add', function (row) {
     row = row.toJSON()
@@ -452,12 +462,9 @@ PeerTunes.prototype.initReplicationModels = function (room) {
   })
 
   this.chatController.on('chat:submit', function (msg) {
+    // TODO: use seq correctly and push to seq
     self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
   })
-
-  // DJ queue sequence
-  // {id, username, song}
-  this._djSeq = this._doc.createSeq('type', 'djQueue')
 
   this._currentSong.on('update', function (data) {
     console.log('current song update', data)
@@ -490,17 +497,18 @@ PeerTunes.prototype.initReplicationModels = function (room) {
     }
   })
 
-
-  self._djSeq.on('changes', function (row, changed) {
-    console.log('dj seq row changed')
-    console.log(self._djSeq)
+  // TODO: if host is first DJ, guest doesn't detect new row
+  self._djSeq.on('remove', function () {
+    console.log('djseq remove', self._djSeq)
     self.renderDJQueue()
   })
-
-  // TODO: if host is first DJ, guest doesn't detect new row
-  self._djSeq.on('remove', function () { self.renderDJQueue() })
-  self._djSeq.on('add', function () { self.renderDJQueue() })
-  self._djSeq.on('changes', function () { self.renderDJQueue() })
+  self._djSeq.on('add', function () {
+    console.log('djseq add', self._djSeq)
+  })
+  self._djSeq.on('changes', function () {
+    console.log('djseq changes', self._djSeq)
+    self.renderDJQueue()
+  })
   
   if (room.isHost) {
     
@@ -549,6 +557,7 @@ PeerTunes.prototype.resetRoom = function () {
   this.moshpitModel.removeAllAvatars()
   this.chatModel.deleteAllMessages()
   this.$leaveButton.hide()
+  this.$DJQueueList.empty()
 }
 
 PeerTunes.prototype.removeDJFromQueue = function (id) {
@@ -591,11 +600,12 @@ PeerTunes.prototype.joinDJQueue = function () {
   if (front.source === 'MP3') {
     console.log('on queue join, front is mp3 => seeding')
     self.seedFileWithKey(front.id, function (torrent) {
-      self._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, userId: self.id, username: self.username, song: front})
+      //self._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, userId: self.id, username: self.username, song: front})
+      self._djSeq.push({id: 'dj-'+self.id, userId: self.id, username: self.username, song: front})
     })
   }
   else {
-    this._djSeq.push({type: 'djQueue', id: 'dj-'+self.id, userId: self.id, username: self.username, song: self.queueModel.front()})
+    this._djSeq.push({id: 'dj-'+self.id, userId: self.id, username: self.username, song: self.queueModel.front()})
   }
   
   return true
