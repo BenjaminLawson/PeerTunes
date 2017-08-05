@@ -25,15 +25,27 @@ function LobbyController(opts) {
   this.lobby.on('rooms:add', this._onLobbyAddRoom)
 
   this.$createRoomButton = $('#btn-create-room')
-  this.$modalCreateRoomButton = $('#modal-btn-create-room')
   this.$roomList = $('#room-list')
+  // modal
+  this.$createRoomModal = $('#createRoomModal')
+  this.$modalCreateRoomButton = $('#modal-btn-create-room')
+  this.$modalRoomNameInput = $('#roomNameInput')
+  this.$createRoomForm = $('#create-room-form')
 
   this._initClickHandlers()
+
+  this.$createRoomForm.submit(function (e) {
+    console.log('form submitted')
+    e.preventDefault() // prevent form from actually submitting
+    self._onSubmitCreateRoomForm()
+  })
+
 }
 
 LobbyController.prototype.destroy = function () {
   this.$createRoomButton.off()
   this.$modalCreateRoomButton.off()
+  this.$createRoomForm.off()
   
   this.$roomList.empty()
 
@@ -48,34 +60,26 @@ LobbyController.prototype._initClickHandlers = function () {
   var self = this
   // create room
   this.$createRoomButton.click(function (e) {
-     $('#createRoomModal').modal('show')
+     self.$createRoomModal.modal('show')
   })
+}
 
-  // modal create room
-  this.$modalCreateRoomButton.click(function (e) {
-    console.log('room name val: ', $('#roomNameInput').val())
-    if ($('#roomNameInput').val().length < 1) {
-      e.stopPropagation()
-      $('#create-room-form-group').addClass('has-error')
-      return
-    }
-    $('#create-room-form-group').removeClass('has-error')
-    
-    var roomName = $('#roomNameInput').val()
-    
-    $('#roomNameInput').val('')
-    self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {room: {name: roomName}})
-  })
-
-  // click on a room listing
-  /*
-  this.$roomList.on('click', '.room-list-item', function (e) {
-    // room guests cna leave lobby since they don't need to keep room listing alive
-    self.lobby.leave()
-    self.lobby = null
-  })
-*/
+LobbyController.prototype._onSubmitCreateRoomForm = function () {
+  var self = this
+  console.log('room name val: ', self.$modalRoomNameInput.val())
+  if (self.$modalRoomNameInput.val().length < 1) {
+    console.log('invalid room name length')
+    $('#create-room-form-group').addClass('has-error')
+    return
+  }
+  $('#create-room-form-group').removeClass('has-error')
   
+  var roomName = self.$modalRoomNameInput.val()
+  
+  self.$modalRoomNameInput.val('')
+  self.router.route('#room/'+self.identity.keypair.public.toString('hex'), {room: {name: roomName}})
+  
+  self.$createRoomModal.modal('hide')
 }
 
 LobbyController.prototype._joinLobby = function () {
