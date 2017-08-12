@@ -4,7 +4,6 @@ var ejs = require('gulp-ejs')
 var source = require('vinyl-source-stream')
 var buffer = require('vinyl-buffer')
 var del = require('del')
-var uglify = require('gulp-uglify')
 var pump = require('pump')
 var uglifyify = require('uglifyify')
 
