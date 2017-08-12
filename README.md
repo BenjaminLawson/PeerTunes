@@ -3,6 +3,8 @@ PeerTunes is a Peer-to-Peer social DJ'ing experience for the browser. Peers take
 
 ![Alt text](screenshot.jpg?raw=true "Screenshot of Working Alpha Version")
 
+### Distribution Mirrors
+- https://benjaminlawson.github.io/PeerTunes
 ### Development
  - Automatically build changes to src/main.js : `npm run-script watch`
  - Start local web server: `npm start`
