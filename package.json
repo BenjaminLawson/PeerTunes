@@ -28,12 +28,16 @@
     "webtorrent": "^0.96.4"
   },
   "devDependencies": {
-    "concurrently": "^3.1.0",
     "browserify": "^13.1.0",
-    "uglify-js": "^2.7.3",
-    "uglifyify": "^3.0.3",
-    "minifyify": "^7.3.3",
+    "concurrently": "^3.1.0",
+    "del": "^3.0.0",
+    "ejs": "^2.4.2",
     "exorcist": "^0.4.0",
-    "ejs": "^2.4.2"
+    "gulp": "^3.9.1",
+    "gulp-ejs": "^3.0.1",
+    "minifyify": "^7.3.3",
+    "uglifyify": "^3.0.4",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0"
   }
 }
