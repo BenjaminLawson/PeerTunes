@@ -41,9 +41,23 @@ body {
   height: 100%;
 }
 
+#chat {
+  height: calc(100% - 35px);
+}
+
 #chat .panel-body {
-  height: 100%;
-  overflow-y: scroll;
+  height: calc(100% - 58px);
+  overflow-y: auto;
+}
+
+#chat .panel-footer {
+  position: absolute;
+  bottom: -7px;
+}
+
+#dj-queue-panel > .panel {
+  height: calc(100% - 35px);
+  overflow-y: auto;
 }
 
 .nav-tabs {
@@ -103,8 +117,8 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 480px;
-  height: 300px;
+  top: 380px;
+  height: 250px;
   width: 100%;
   max-width: 600px;
 }
@@ -133,6 +147,11 @@ body {
   border-top-color: #222222 !important;
 }
 
+#room-container {
+  position: relative;
+  height: calc(100% - 140px);
+}
+
 /* Sidebars */
 #sidebar-left {
   height: calc(100vh - 290px);
@@ -140,7 +159,7 @@ body {
 
 #sidebar-right {
   right: 0px;
-  height: calc(100vh - 230px);
+  height: calc(100vh - 142px);
 }
 
 .sidebar {
@@ -221,7 +240,7 @@ body {
 /* My Queue */
 #my-queue .panel-body{
   height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 
 .queue-item-controls {
