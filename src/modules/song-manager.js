@@ -40,11 +40,14 @@ SongManager.prototype.play = function (meta) {
   this.meta = meta
   this.meta.currentTime = 0
 
+  if (this.updater) clearInterval(this.updater)
+  if (this.timeout) clearTimeout(this.timeout)
+
   this.updater = setInterval(function () {
     self.meta.currentTime += 500
+    self.emit('time:update', self.meta.currentTime)
   }, 500)
 
-  clearTimeout(this.timeout)
   this.timeout = setTimeout(function () {
     clearInterval(self.updater)
     self.end()

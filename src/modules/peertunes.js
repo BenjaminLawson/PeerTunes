@@ -141,6 +141,16 @@ function PeerTunes (opts) {
   config.player.torrentClient = this.torrentClient
   this.player = new Player(config.player)
 
+  this._onHostTimeUpdate = function (time) {
+    var old = self._currentSong.get()
+    self._currentSong.set({
+      currentTime: time,
+      song: old.song,
+      userId: old.userId,
+      username: old.username
+    })
+  }
+  
   this.songManager = new SongManager()
   this.songManager.on('song-end', this.onSongEnd.bind(this))
 
@@ -179,7 +189,7 @@ function PeerTunes (opts) {
   
 
   // cache jQuery selectors
-  // TODO: add element selectors to config
+  // TODO: add all element selectors to config
   this.$songSearchInput = $('#song-search-input')
   this.$songSearchSubmitButton = $('#song-search-submit-button')
   this.$likeButton = $(config.selectors.likeButton)
@@ -224,6 +234,7 @@ PeerTunes.prototype.destroy = function () {
   // remove all event listeners
   this.queueModel.removeListener('queue:change', this._onQueueModelChange)
   this.songManager.removeListener('song-end', this.onSongEnd)
+  this.songManager.removeListener('time:update', this._onHostTimeUpdate)
   this.torrentClient.removeListener('torrent', this._onTorrent)
   this.torrentClient.removeListener('error', this._onTorrentError)
 
@@ -454,19 +465,30 @@ PeerTunes.prototype.initReplicationModels = function (room) {
 
   this.chatController.on('chat:submit', function (msg) {
     // TODO: use seq correctly and push to seq, or keep abusing the fact that sets happen to stay in order anyway...
+    // crdt chat example uses sets
     self._doc.add({type: 'chat', userId: self.id, username: self.username, message: msg})
   })
 
   this._currentSong.on('update', function (data) {
-    console.log('current song update', data)
+    //console.log('current song update', data)
     
     if (data == null || !data.song) {
       console.log('current song set to null, ending')
       self.songManager.end()
       return
     }
-    
-    var currentTime = Date.now() - data.startTime
+
+    var currentTime = data.currentTime
+
+    // TODO: handle case where same song is played multiple times in a row, either by same or diff dj
+    if (data.song.source === self.songManager.meta.source && data.song.id === self.songManager.meta.id) {
+      //console.log('song didn\'t change, skipping update')
+      // timestamp update
+      // TODO: check if player's time difference is large and adjust player time if so
+      return // song has ot changed, so don't restart song
+    }
+
+    console.log('new song update', data)
 
     if (currentTime/1000 >= data.song.duration) {
       console.log('skipping song that already ended')
@@ -633,6 +655,8 @@ PeerTunes.prototype.playNextDJSong = function () {
 
   if (!this.room || !this.room.isHost) return
 
+  this.songManager.removeListener('time:update', this._onHostTimeUpdate)
+
   if (this._djSeq.length() === 0) {
     console.log('no DJs in queue, nothing to play')
     self._currentSong.set(null)
@@ -644,12 +668,15 @@ PeerTunes.prototype.playNextDJSong = function () {
   var row = this._djSeq.first().toJSON()
   var song = row.song
 
-  this._currentSong.set({
-    startTime: Date.now(),
+  var currentSong = {
+    currentTime: 0,
     song: song,
     userId: row.userId,
     username: row.username
-  })
+  }
+  
+  this._currentSong.set(currentSong)
+  this.songManager.on('time:update', this._onHostTimeUpdate)
 }
 
 //callback when seeding finished setting up

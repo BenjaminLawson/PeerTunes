@@ -68,6 +68,7 @@ function QueueController (view, model, config) {
             console.log('Error calculating infoHash: ', err)
             return
           }
+          var title = tags.title ? tags.combinedTitle : file.name
           var song = {title: tags.combinedTitle, source: 'MP3', id: key, infoHash: infoHash, duration: duration}
           self.model.addSong(song)
           console.log('Added song to queue model: ', song)

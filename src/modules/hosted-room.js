@@ -2,6 +2,7 @@
   TODO:
   - security: sign updates to rows, only owner of key can update that row
   - if NOT host, detect when host removes heartbeat or heartbeat times out
+  - use local timestamps in case client's clock is wrong
 */
 module.exports = HostedRoom
 
@@ -39,19 +40,36 @@ function HostedRoom (opts) {
 
   this._doc = new Doc()
   this._heartbeats = this._doc.createSet('type', 'heartbeat')
+  // need to keep track of heartbeats using local time in case peer clocks differ
+  this._localHeartbeats = {} // {id: time}
 
   this._onHeartbeatAdd = function (row) {
-    console.log('heartbeat add: ', row.toJSON())
-    self.emit('user:join', row.toJSON())
+    var r = row.toJSON()
+    console.log('heartbeat add: ', r)
+    self.emit('user:join', r)
+
+    // set local heartbeat
+    self._localHeartbeats[r.id] = Date.now() 
   }
 
   this._onHeartbeatRemove = function (row) {
     row = row.toJSON()
     console.log('heartbeat remove: ', row)
     self.emit('user:leave', row)
+
+    // remove local heartbeat
+    delete self._localHeartbeats[row.id]
+    
     if (!self.isHost && row.id === self.hostId) {
       console.log('host left room')
       self.emit('host:leave')
+    }
+  }
+
+  this._onHeartbeatChanges = function (row) {
+    r = row.toJSON()
+    if (self._localHeartbeats[r.id]) {
+      self._localHeartbeats[r.id] = Date.now()
     }
   }
 
@@ -66,7 +84,8 @@ function HostedRoom (opts) {
 
   this._heartbeats.on('add', this._onHeartbeatAdd)
   this._heartbeats.on('remove', this._onHeartbeatRemove)
-
+  this._heartbeats.on('changes', this._onHeartbeatChanges)
+  
   this._myHeartbeat = this._doc.add({id: self.id, type: 'heartbeat', time: Date.now(), nicename: self.nicename})
 
   // update heartbeat every 30 seconds
@@ -96,6 +115,7 @@ HostedRoom.prototype.destroy = function () {
   this.removeListener('peer:connect', this._onPeerConnect)
   this._heartbeats.removeListener('add', this._onHeartbeatAdd)
   this._heartbeats.removeListener('remove', this._onHeartbeatRemove)
+  this._heartbeats.removeListener('changes', this._onHeartbeatChanges)
   
   // remove heartbeat
   clearInterval(this._heartbeatInterval)
@@ -127,7 +147,7 @@ HostedRoom.prototype._initReaper = function () {
     var heartbeats = self._heartbeats.asArray()
     for (var i = heartbeats.length - 1; i >= 0; i--) {
       var row = heartbeats[i]
-      var time = row.get('time')
+      var time = self._localHeartbeats[row.id]
       if (Date.now() - time > EXPIRATION_TIME) {
         console.log('reaping: ', row.id)
         self._doc.rm(row.id)
@@ -145,7 +165,7 @@ HostedRoom.prototype._initHostHeartbeatChecker = function () {
 
   function check () {
     var row = self._heartbeats.get(self.hostId)
-    if (!row || Date.now() - row.get('time') > EXPIRATION_TIME) {
+    if (!row || Date.now() - self._localHeartbeats[row.id] > EXPIRATION_TIME) {
       console.log('host heartbeat expired')
       self.emit('host:leave')
     }
