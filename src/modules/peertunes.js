@@ -484,8 +484,15 @@ PeerTunes.prototype.initReplicationModels = function (room) {
     if (data.song.source === self.songManager.meta.source && data.song.id === self.songManager.meta.id) {
       //console.log('song didn\'t change, skipping update')
       // timestamp update
-      // TODO: check if player's time difference is large and adjust player time if so
-      return // song has ot changed, so don't restart song
+      
+      // check for time disagreement
+      var maxTimeDiff = 6000 // 6 seconds
+      if (Math.abs(currentTime - self.songManager.meta.currentTime) > maxTimeDiff) {
+        console.warn('local current song time disagrees with host current time, adjusting local current time')
+        self.songManager.meta.currentTime = currentTime
+        self.player.scanToTime(currentTime)
+      }
+      return // song has not changed, so don't restart song
     }
 
     console.log('new song update', data)

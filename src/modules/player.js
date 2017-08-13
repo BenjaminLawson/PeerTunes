@@ -146,6 +146,12 @@ Player.prototype.end = function () {
   }
 }
 
+// time as ms
+Player.prototype.scanToTime = function (time) {
+  if (!this.player) return
+  this.player.currentTime(time / 1000) // milliseconds -> seconds
+}
+
 Player.prototype.playMp3 = function (meta, time, isDJ) {
   var self = this
 
